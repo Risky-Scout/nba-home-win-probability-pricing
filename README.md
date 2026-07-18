@@ -1,184 +1,86 @@
-# NBA Home-Win Probability — Final Sportsbook Submission
+# NBA Home-Win Probability Pricing
 
 [![CI](https://github.com/Risky-Scout/nba-home-win-probability-pricing/actions/workflows/tests.yml/badge.svg)](https://github.com/Risky-Scout/nba-home-win-probability-pricing/actions/workflows/tests.yml)
 
+A leakage-safe, chronologically validated probability-pricing model for the
+bet365 NBA technical task.
 
-## Objective
+## Start here
 
-Estimate the home team's probability of winning each April NBA game using
-October-through-March information.
+| Time available | Review path |
+|---|---|
+| 2 minutes | Read [SUMMARY.md](SUMMARY.md) and open [April predictions](outputs/april_predictions.csv) |
+| 10 minutes | Follow the [Reviewer Guide](docs/REVIEWER_GUIDE.md) |
+| 20 minutes | Read the [Model Story](docs/MODEL_EVOLUTION.md) and inspect [the champion code](nba_win_probability.py) |
+| Reproduce | Follow [Reproducibility](docs/REPRODUCIBILITY.md) |
+| Audit | Review the [Model Card](docs/MODEL_CARD.md), [limitations](docs/LIMITATIONS_AND_ROADMAP.md), and [artifact manifest](docs/ARTIFACT_MANIFEST.md) |
 
-The official answer is:
+## Business objective
 
-- `outputs/april_predictions.csv`
+Estimate the probability that the team listed as `home` wins each April game,
+using only information available through March.
+
+The official submission is:
+
+- [`outputs/april_predictions.csv`](outputs/april_predictions.csv)
 - Column: `home_win_probability`
 
-Every official April probability is frozen at the March 31 information cutoff.
-No April result enters another official April price.
+All 96 official April prices are frozen at the March 31 information cutoff.
 
-## Executive decision
+## Selected model
 
-The selected model remains a **strongly regularized three-signal
-paired-comparison logistic model**.
+The champion is a strongly regularized logistic paired-comparison model with
+three home-minus-away signals:
 
-Features:
+1. Net-wins differential.
+2. Cumulative point-margin differential.
+3. Evidence-weighted recent point-margin differential.
 
-1. Home-minus-away net wins.
-2. Home-minus-away cumulative point margin.
-3. Home-minus-away evidence-weighted recent point margin.
+Selected hyperparameters:
 
-Selected parameters:
+- Recent-form half-life: **12 games**
+- Logistic regularization: **`C = 0.0075`**
 
-- Recent-margin half-life: **12 games**
-- Logistic `C`: **0.0075**
-
-The model remains selected after explicit tests of the limitations raised
-during review:
-
-- Opponent-adjusted ridge team ratings.
-- Pure EWMA recent form.
-- Bayesian-shrunken EWMA recent form.
-- One- and two-component PCA latent-strength models.
-- Every two-feature subset.
-- Rich lagged box-score and schedule features.
-- Elo, XGBoost, CatBoost, random forest and ExtraTrees.
-- Residual boosting and convex probability ensembles.
-- Platt, beta and isotonic calibration.
-
-No addition produced a material and temporally stable improvement in proper
-probability scores.
-
-## What “optimal” means here
-
-This repository does **not** claim that the model is the universally optimal
-NBA pricing system.
-
-It is the strongest defensible submission conditional on:
-
-- The supplied one-season dataset.
-- The pregame information timestamp.
-- The absence of injuries, lineups, player minutes and market odds.
-- Proper probability scoring.
-- Reproducibility and computational-efficiency requirements.
-- The challenger families tested.
-- A governance rule that complexity must earn deployment through a stable
-  forward improvement.
-
-
-## What “home-team win probability” means
-
-The assignment asks for a probability for the team listed as `home` in each
-April matchup.
-
-The official model already produces a **team- and matchup-specific**
-probability because the inputs depend on the specific home and away teams'
-pregame states.
-
-That should not be confused with estimating a different home-court advantage
-for every team.
-
-A separate hierarchically shrunk team-specific venue challenger is included in
-`research/team_specific_home_effects.py`. It improves validation log loss
-slightly, but the bootstrap interval includes zero, March is effectively tied,
-and April descriptive performance is worse. It is therefore retained as a
-shadow challenger rather than promoted to the official price.
-
-See `research/TEAM_SPECIFIC_HOME_EFFECTS.md`.
-
-## Information timing
-
-The current game's points, turnovers, fouls and rebounds are postgame
-information. They cannot predict the same game.
-
-Each row is constructed in this order:
-
-1. Read both teams' pregame states.
-2. Construct home-minus-away features.
-3. Store the prediction row.
-4. Construct the outcome.
-5. Update both team states for later games.
-
-That ordering is the central leakage control.
-
-## Data audit
-
-The source contains:
-
-- 1,230 unique games.
-- 30 teams.
-- 82 games per team.
-- 1,134 October-March development games.
-- 96 April games.
-- 16 actual columns, despite the brief saying 14.
-- No missing values, duplicate game IDs, tied final scores or record
-  inconsistencies.
-
-`game_id` is read as text so leading zeros survive downstream joins.
-
-## Model equation
-
-For matchup features \(x_1,x_2,x_3\):
+The probability model is:
 
 \[
-P(	ext{home win})=
+P(\text{home win})
+=
 \sigma\left(
-eta_0+eta_1z_1+eta_2z_2+eta_3z_3
-
-ight)
+\beta_0 + \beta_1 z_1 + \beta_2 z_2 + \beta_3 z_3
+\right)
 \]
 
-where each \(z_j\) is standardized using training-only means and standard
-deviations.
+where each \(z_j\) is standardized using training-only statistics.
 
-L2 regularization is essential because the features are highly related.
+## Why this is not “just basic logistic regression”
 
-Observed variance-inflation factors:
+The statistical link is logistic, but the model is built around:
 
-| Feature | VIF |
-|---|---:|
-| `net_wins_diff` | 11.40 |
-| `cumulative_margin_diff` | 18.01 |
-| `recent_margin_evidence_diff` | 6.26 |
+- Sequential, pregame-only team states.
+- Explicit feature-before-update ordering.
+- Evidence-weighted dynamic form.
+- Strong L2 shrinkage for correlated signals.
+- Chronological hyperparameter selection.
+- Proper probability scoring.
+- Frozen April information timing.
+- Extensive champion-challenger governance.
 
-The correlations are a known limitation, not hidden evidence of independent
-signals. L2 shrinkage stabilizes the joint price.
+The feature engineering and information timestamp do most of the work. The
+logistic layer converts those signals into a stable, auditable probability.
 
-## Home-court advantage
+## Development design
 
-Because the model standardizes its inputs, the centered fitted intercept and
-the equal-strength home baseline are not identical.
+| Period | Role |
+|---|---|
+| October-December | Fit coefficients |
+| January-February | Select half-life, regularization, and architecture |
+| March | Later governance and robustness check |
+| October-March | Final refit |
+| April | Requested forecast period |
 
-- Standardized intercept log odds:
-  **0.228745**
-- Equal-strength home log odds:
-  **0.221501**
-- Equal-strength home-win probability:
-  **55.515%**
-- Equal-strength home odds multiplier:
-  **1.2479x**
-
-## Chronological development design
-
-- October-December: coefficient training.
-- January-February: hyperparameter and architecture validation.
-- March: later **governance/robustness check**.
-- October-March: final refit.
-- April: requested forecast period.
-
-March is deliberately not described as a pristine untouched test. It has been
-used during model-governance review.
-
-April outcomes are not used to select the submitted architecture.
-
-## Primary measure
-
-The primary metric is forward log loss.
-
-Log loss is appropriate because the business output is a probability price.
-It rewards informative probabilities and penalizes confidently wrong prices.
-
-Brier score is secondary. AUC and 0.50-threshold accuracy are diagnostics, not
-the pricing objective.
+March is not described as a pristine untouched test because it informed later
+governance decisions.
 
 ## March governance result
 
@@ -189,151 +91,55 @@ the pricing objective.
 | Cumulative-margin-only logistic | 0.522780 | 0.172852 | 0.816118 | 75.732% |
 | **Three-signal champion** | **0.509645** | **0.167618** | **0.823538** | **75.732%** |
 
-## Limitations-driven model tests
+The primary metric is forward log loss because the business output is a
+probability price, not merely a winner classification.
 
-| Candidate | Validation log loss | March log loss | Decision |
-|---|---:|---:|---|
-| Cumulative margin + recent margin | 0.626556 | 0.513661 | Tiny validation gain; later deterioration |
-| Net wins + recent margin | 0.629909 | 0.505835 | Later gain; validation deterioration |
-| Champion + opponent-adjusted SRS | 0.627278 | 0.511107 | Validation gain too small; March worse |
-| Bayesian-shrunken recent margin | 0.628354 | 0.511124 | Worse in both periods |
-| One-component latent PCA | 0.627744 | 0.509144 | Similar, less directly interpretable |
+## Home-court interpretation
 
-The nearest opponent-adjusted challenger improves validation log loss by only
-**0.000251**
-relative to the champion, then worsens March by
-**0.001462**.
+The official probability is already specific to the actual home and away
+teams in each matchup.
 
-The paired date-block bootstrap interval for its combined
-January-March log-loss difference includes zero. The apparent improvement is
-not stable enough to earn deployment.
+For otherwise equal raw team-strength features:
 
-## Why the full three-feature model remains selected
+- Home log odds: **0.221501**
+- Home-win probability: **55.515%**
+- Home odds multiplier: **1.2479x**
 
-The feature-ablation result is nuanced:
+A separate shrunk team-specific venue challenger is retained under
+[`research/`](research/) because its small improvement was not statistically
+or temporally stable enough to replace the champion.
 
-- Cumulative margin plus recent margin is fractionally better in
-  January-February validation.
-- Net wins plus recent margin is fractionally better in March.
-- The full model is best when the January-March observations are pooled.
-- All differences are small and bootstrap intervals overlap zero.
+## Why added complexity was rejected
 
-The selected model is therefore described as a stable, interpretable
-specification—not as mathematically dominant on every slice.
+The champion was compared with:
 
-## March calibration
+- XGBoost and residual XGBoost.
+- CatBoost, random forest, and ExtraTrees.
+- Convex probability ensembles.
+- Platt, beta, and isotonic calibration.
+- Opponent-adjusted ridge team ratings.
+- Pure and Bayesian-shrunken EWMA variants.
+- PCA latent-strength models.
+- Every two-feature subset.
+- Team-specific venue deviations.
+- Rich lagged box-score and schedule features.
 
-March was not perfectly calibrated:
+Some challengers improved isolated periods or secondary metrics, but no model
+produced a material, temporally stable improvement in proper probability
+scores.
 
-- Mean predicted home probability:
-  **54.743%**
-- Observed home-win rate:
-  **60.251%**
-- Difference:
-  **5.508%**
-- Calibration slope:
-  **1.341**
+See [Model Evolution](docs/MODEL_EVOLUTION.md) and
+[Reviewer Guide](docs/REVIEWER_GUIDE.md).
 
-The date-block bootstrap interval for the mean calibration gap is:
+## Run locally
 
-**[0.886%,
-10.192%]**
-
-A slope above one indicates that March outcomes were more separated than the
-model's prices—the model was conservative during that period.
-
-No recalibration layer is forced. Prospective Platt, beta and isotonic
-mappings all failed to improve next-period scores. A one-month calibration
-deviation is monitored rather than overfit.
-
-## April model uncertainty
-
-`outputs/april_model_uncertainty.csv` contains date-block bootstrap intervals
-around the fitted coefficient model.
-
-Across the 96 games, the median 90% interval width is
-**5.650%**.
-
-These intervals represent parameter-estimation uncertainty conditional on:
-
-- The supplied feature definitions.
-- The schedule.
-- The model family.
-
-They do not include injury, lineup, market, data-source or structural model
-uncertainty.
-
-## Fair odds
-
-The official file includes zero-margin decimal odds:
-
-\[
-	ext{fair home odds}=1/P(	ext{home win})
-\]
-
-\[
-	ext{fair away odds}=1/(1-P(	ext{home win}))
-\]
-
-These are fundamental fair prices, not offered customer prices.
-
-A production trading layer would add:
-
-- Player availability and expected minutes.
-- Lineup and news adjustments.
-- Market-price blending.
-- Overround.
-- Liability and limit controls.
-- Trader overrides.
-
-## Main limitations
-
-1. One season only; no external-season validation.
-2. No injuries, player-level impact or expected lineups.
-3. Cumulative margin is not pace-adjusted.
-4. The three signals are highly correlated.
-5. March showed conservative home pricing.
-6. Evidence-weighted EWMA is unusual, although explicit challengers did not
-   improve it reliably.
-7. Opponent-adjusted SRS did not earn inclusion, but remains a production
-   research path.
-8. April has already been examined descriptively and is not represented as a
-   pristine untouched test.
-
-## Supported Python
-
-This repository supports **Python 3.11, 3.12, and 3.13**. Python 3.12 is
-recommended and is tested in CI.
-
-Python 3.14 is intentionally rejected before pandas, NumPy, or scikit-learn
-load. This prevents opaque compiled-extension crashes on unsupported
-environments.
-
-### One-command macOS setup
+Supported Python: **3.11-3.13**. Python 3.12.13 is recommended.
 
 ```bash
 bash scripts/bootstrap_macos.sh
 ```
 
-The script installs Homebrew Python 3.12 when necessary, recreates `.venv`,
-installs the exact development environment, and runs every data-free quality
-check.
-
-### Manual setup
-
-```bash
-brew install python@3.12
-rm -rf .venv
-"$(brew --prefix python@3.12)/bin/python3.12" -m venv .venv
-source .venv/bin/activate
-
-python scripts/check_python.py
-python -m pip install --upgrade pip
-python -m pip install -r requirements-dev.txt
-bash scripts/run_quality_checks.sh
-```
-
-## Run the champion
+Run the official model:
 
 ```bash
 python nba_win_probability.py \
@@ -341,83 +147,44 @@ python nba_win_probability.py \
   --output-dir outputs
 ```
 
-## Run enhanced governance
+Run the complete core workflow:
 
 ```bash
-python enhanced_governance.py \
-  --data /path/to/nba-win-probability-data.csv \
-  --output-dir outputs \
-  --figure-dir figures
-```
-
-## Run optional machine-learning challengers
-
-```bash
-python -m pip install -r requirements-challengers.txt
-
-python challenger_analysis.py \
-  --data /path/to/nba-win-probability-data.csv \
-  --output-dir outputs
-```
-
-## Validate the package
-
-```bash
-python validate_submission.py \
+python run_submission.py \
   --root . \
   --data /path/to/nba-win-probability-data.csv
 ```
 
-## Repository contents
+Run the data-free quality gate:
 
-- `nba_win_probability.py`: official champion and April prices.
-- `enhanced_governance.py`: limitations-driven SRS, shrinkage, PCA,
-  calibration, stability and uncertainty analysis.
-- `challenger_analysis.py`: nonlinear models, ensembles, calibration and SHAP.
-- `ablation_and_timing.py`: feature ablation and local timing.
-- `MODEL_CARD.md`: intended use, evidence and restrictions.
-- `LIMITATIONS_AND_ROADMAP.md`: explicit weaknesses and production research.
-- `SUMMARY.md`: recruiter-ready brief.
-- `pyproject.toml`: supported Python range and exact dependencies.
-- `project_runtime.py`: fail-fast compatibility contract.
-- `scripts/`: macOS bootstrap and repository-quality checks.
-- `tests/`: leakage, validation, probability, runtime, and CI contracts.
-- `CONTRIBUTING.md`: supported environment and pre-commit checks.
-- `outputs/`: predictions and audit artifacts.
-- `figures/`: focused diagnostics.
+```bash
+bash scripts/run_quality_checks.sh
+```
 
-
-## Repository research history
-
-The commit history and tags document the model's progression:
-
-- Leakage-safe three-signal champion.
-- Machine-learning and calibration challengers.
-- Opponent-adjusted, shrinkage and latent-factor governance.
-- Team-specific home-court-effect research.
-- Final recruiter-facing documentation and validation.
-
-See `MODEL_EVOLUTION.md`.
-
-## Repository layout
+## Repository map
 
 ```text
 .
-├── nba_win_probability.py
-├── enhanced_governance.py
-├── challenger_analysis.py
-├── ablation_and_timing.py
-├── validate_submission.py
-├── research/
-│   ├── team_specific_home_effects.py
-│   ├── TEAM_SPECIFIC_HOME_EFFECTS.md
-│   ├── outputs/
-│   └── figures/
-├── tests/
-├── outputs/
-├── figures/
-├── MODEL_CARD.md
-├── LIMITATIONS_AND_ROADMAP.md
-├── MODEL_EVOLUTION.md
-└── REPRODUCIBILITY.md
+├── README.md                     # Main landing page
+├── SUMMARY.md                    # Brief recruiter summary
+├── nba_win_probability.py        # Official champion and April prices
+├── enhanced_governance.py        # SRS, shrinkage, PCA, uncertainty
+├── challenger_analysis.py        # Tree models, ensembles, calibration, SHAP
+├── ablation_and_timing.py        # Feature subsets and timing
+├── outputs/                      # Official predictions and audit artifacts
+├── figures/                      # Core diagnostics
+├── research/                     # Non-promoted research challengers
+├── docs/                         # Reviewer and model-governance documentation
+├── scripts/                      # Setup, privacy, and integrity utilities
+└── tests/                        # Leakage, runtime, configuration, and artifact tests
 ```
+
+## Important limitations
+
+This is a strong technical-task model, not a complete production NBA pricing
+system. The supplied data contains one season and lacks injuries, expected
+lineups, player minutes, possession-based ratings, travel context, and market
+prices.
+
+Those limitations are documented in
+[`docs/LIMITATIONS_AND_ROADMAP.md`](docs/LIMITATIONS_AND_ROADMAP.md).

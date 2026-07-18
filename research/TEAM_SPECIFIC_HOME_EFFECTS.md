@@ -33,11 +33,11 @@ For every game, using only earlier results:
 5. Form:
 
 \[
-	ext{venue deviation}
+\text{venue deviation}
 =
-(	ext{home team's home deviation})
+(\text{home team's home deviation})
 -
-(	ext{away team's road deviation})
+(\text{away team's road deviation})
 \]
 
 The validation-selected challenger uses:

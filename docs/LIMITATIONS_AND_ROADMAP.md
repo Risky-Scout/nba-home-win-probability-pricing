@@ -60,9 +60,9 @@ Raw cumulative margin does not distinguish schedule strength.
 A ridge simple-rating-system challenger was added:
 
 \[
-	ext{home margin}
+\text{home margin}
 =
-h+s_	ext{home}-s_	ext{away}+\epsilon
+h+s_\text{home}-s_\text{away}+\epsilon
 \]
 
 with ridge partial pooling.

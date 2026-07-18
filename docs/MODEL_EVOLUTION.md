@@ -83,6 +83,22 @@ The public repository was converted into an installable Python project with:
 These changes improve operational reliability without changing the selected
 model architecture or its underlying probabilities.
 
+## Stage 7 — Reviewer navigation and presentation clarity
+
+The repository information architecture was simplified without changing the
+model:
+
+- `README.md` became the main decision page.
+- `SUMMARY.md` remained the brief recruiter deliverable.
+- Supporting governance documents moved into `docs/`.
+- `docs/REVIEWER_GUIDE.md` now provides 2-, 10-, and 30-minute review paths.
+- Official, governance, and shadow-research artifacts are labelled separately.
+- Documentation tests reject malformed Markdown control characters and missing
+  navigation files.
+
+This stage improves reviewability and screen-share execution while preserving
+the validated probability engine.
+
 ## Final decision rule
 
 A change enters the official price only when it produces:

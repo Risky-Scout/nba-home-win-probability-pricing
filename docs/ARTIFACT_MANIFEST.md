@@ -130,3 +130,10 @@ These scripts generate no model output:
 - `scripts/run_quality_checks.sh`: runs the complete data-free quality gate.
 - `scripts/bootstrap_macos.sh`: creates a clean Python 3.12 environment and
   executes the quality gate.
+
+
+## Reviewer navigation
+
+`docs/REVIEWER_GUIDE.md` is a hand-authored navigation document. It generates
+no model artifact and provides direct paths to the official price, champion
+code, governance evidence, and reproducibility instructions.
