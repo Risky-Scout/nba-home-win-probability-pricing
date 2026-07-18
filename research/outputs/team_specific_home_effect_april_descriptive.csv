@@ -1,0 +1,2 @@
+model,log_loss,brier_score,roc_auc,accuracy_0_5,mean_probability,actual_home_win_rate
+team_specific_venue_challenger,0.47121319823905766,0.15163597185028638,0.8681961313540261,0.7916666666666666,0.5291442285620209,0.59375

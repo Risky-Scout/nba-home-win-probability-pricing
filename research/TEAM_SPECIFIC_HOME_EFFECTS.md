@@ -1,0 +1,127 @@
+# Team-Specific Home-Court Effects
+
+## The interpretation question
+
+The phrase **home-team win probability** in the assignment means:
+
+> For each April matchup, estimate the probability that the team listed as
+> `home` wins that game.
+
+The official champion already does this. Its probability changes with the
+specific home team, away team and their pregame strength states.
+
+That is different from estimating a separate **home-court advantage parameter
+for each NBA team**.
+
+The champion uses one structural home baseline:
+
+- Equal-strength home probability: approximately 55.5%.
+
+This research asks whether team-specific venue effects should replace or
+supplement that global baseline.
+
+## Challenger construction
+
+For every game, using only earlier results:
+
+1. Estimate the league home-win rate with a strong 0.500 prior.
+2. Estimate the home team's home record with shrinkage toward the league home
+   rate.
+3. Estimate the away team's road record with shrinkage toward the league road
+   rate.
+4. Compare each venue-specific rate with that team's overall rate.
+5. Form:
+
+\[
+	ext{venue deviation}
+=
+(	ext{home team's home deviation})
+-
+(	ext{away team's road deviation})
+\]
+
+The validation-selected challenger uses:
+
+- Team prior: **10 pseudo-games**
+- Global home-rate prior: **500 pseudo-games**
+- Logistic `C`: **0.010**
+- Features: champion core + global home trend + team-specific venue deviation
+
+The large global prior deliberately prevents a temporary league home streak
+from creating a large baseline shift.
+
+## Results
+
+| Model | Validation log loss | Validation Brier | March log loss | March Brier |
+|---|---:|---:|---:|---:|
+| Three-signal champion | 0.627529 | 0.217481 | 0.509645 | **0.167618** |
+| Team-specific venue challenger | **0.624285** | **0.216346** | **0.509434** | 0.167916 |
+
+The challenger improves validation log loss by:
+
+\[
+0.003243
+\]
+
+Its March log-loss improvement is only:
+
+\[
+0.000211
+\]
+
+March accuracy falls from **75.73%** to
+**74.48%**.
+
+## Bootstrap uncertainty
+
+| Period | Observed challenger − champion log loss | 95% interval | Probability challenger is better |
+|---|---:|---:|---:|
+| January-February validation | -0.003243 | [-0.010854, 0.004250] | 80.0% |
+| March governance | -0.000211 | [-0.005831, 0.005714] | 52.9% |
+
+Both intervals include zero. The March comparison is effectively a tie.
+
+## April descriptive audit
+
+The team-specific challenger uses a strict March 31 information cutoff.
+
+Its April descriptive results are:
+
+- Log loss: **0.471213**
+- Brier score: **0.151636**
+- ROC AUC: **0.868196**
+- Accuracy: **79.17%**
+
+The official champion's previously reported April descriptive log loss is
+0.468596, so the challenger is worse descriptively. April outcomes are not
+used for selection.
+
+## Decision
+
+**Do not promote the team-specific venue challenger.**
+
+Reasons:
+
+- The official model already produces matchup-specific team probabilities.
+- The venue extension's validation gain is small and statistically uncertain.
+- March log loss is effectively tied.
+- March Brier score and accuracy do not improve.
+- April descriptive performance is worse.
+- Each team has only about 41 home games in one season, so team-specific venue
+  deviations are inherently noisy.
+
+The correct sportsbook architecture is:
+
+- Retain the global home baseline in the champion.
+- Keep team-specific venue effects as a shadow challenger.
+- Revisit them with multiple seasons, arena/travel context, injuries and
+  player-level availability.
+
+## Reproduce
+
+```bash
+python research/team_specific_home_effects.py \
+  --data /path/to/nba-win-probability-data.csv \
+  --output-dir research/outputs \
+  --figure-dir research/figures
+```

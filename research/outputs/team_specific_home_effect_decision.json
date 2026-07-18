@@ -1,0 +1,12 @@
+{
+  "promote_to_champion": false,
+  "selected_challenger": {
+    "feature_family": "global_and_team_specific",
+    "team_prior": 10.0,
+    "global_prior": 500.0,
+    "C": 0.01
+  },
+  "interpretation": "The official model already produces team-specific matchup probabilities. This challenger tests team-specific venue deviations. It improves validation log loss and is nearly tied in March, but the paired bootstrap intervals include zero, March Brier and accuracy do not improve, and the strict April descriptive score is worse. The evidence is insufficient to replace the simpler champion.",
+  "april_outcomes_used_for_selection": false,
+  "march_is_governance_not_pristine_test": true
+}

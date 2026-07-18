@@ -1,0 +1,3 @@
+period,observed_challenger_minus_champion_log_loss,bootstrap_2_5_percent,bootstrap_median,bootstrap_97_5_percent,probability_challenger_is_better,replicates
+January-February validation,-0.0032430704670804197,-0.010854239651480042,-0.0032161747223208815,0.004250276755573935,0.7995,20000
+March governance,-0.00021143896997125985,-0.005830977668127934,-0.00020911224546472414,0.005714284938226248,0.5287,20000
