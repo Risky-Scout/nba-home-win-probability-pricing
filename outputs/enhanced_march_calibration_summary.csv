@@ -1,0 +1,2 @@
+n,mean_probability,actual_home_win_rate,calibration_in_the_large_gap_actual_minus_predicted,calibration_intercept,calibration_slope,log_loss,brier_score,roc_auc
+239,0.5474258207319714,0.602510460251046,0.05508463951907461,0.27093167265872703,1.340898109689892,0.5096452887112716,0.16761849059271816,0.8235380116959065

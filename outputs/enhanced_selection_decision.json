@@ -1,0 +1,25 @@
+{
+  "selected_model": "three_signal_champion",
+  "selected_features": [
+    "net_wins_diff",
+    "cumulative_margin_diff",
+    "recent_margin_evidence_diff"
+  ],
+  "selected_half_life": 12.0,
+  "selected_C": 0.0075,
+  "selection_statement": "The architecture is retained because no opponent-adjusted, Bayesian-shrunk, pure-EWMA, PCA, or reduced-feature challenger produces a material and temporally stable proper-score improvement.",
+  "validation_log_loss": 0.6275285563144087,
+  "march_governance_log_loss": 0.5096452887112716,
+  "best_opponent_adjusted_challenger": {
+    "family": "champion_plus_srs_alpha_100_half_life_none",
+    "validation_log_loss": 0.6272778634199376,
+    "march_log_loss": 0.5111069223931122
+  },
+  "best_bayesian_shrunk_recent_challenger": {
+    "family": "shrunk_ewma_half_life_12_prior_40",
+    "validation_log_loss": 0.6283544281937937,
+    "march_log_loss": 0.5111241836904088
+  },
+  "march_is_a_governance_check_not_an_untouched_test": true,
+  "april_outcomes_used_for_model_selection": false
+}

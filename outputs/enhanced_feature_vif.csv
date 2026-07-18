@@ -1,0 +1,4 @@
+feature,r_squared_against_other_features,variance_inflation_factor
+net_wins_diff,0.9122602516200845,11.397342919995312
+cumulative_margin_diff,0.9444783909596025,18.011005395618138
+recent_margin_evidence_diff,0.8403600710162072,6.264096998574359
