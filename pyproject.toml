@@ -12,7 +12,7 @@ authors = [
   {name = "Joseph Shackelford"}
 ]
 dependencies = [
-  "numpy==2.3.5",
+  "numpy==2.4.6",
   "pandas==2.2.3",
   "scikit-learn==1.8.0",
   "matplotlib==3.10.8",
