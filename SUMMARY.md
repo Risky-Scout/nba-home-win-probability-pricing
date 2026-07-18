@@ -72,3 +72,13 @@ prices, overround, liability, limits and trader judgment.
 This is not claimed to be the universally optimal NBA model. It is the most
 defensible submission for the supplied data and business constraints after
 the serious challenger families tested failed to earn additional complexity.
+
+
+## Team-specific interpretation
+
+The official probability is already specific to each home-away matchup.
+
+A separate shrunk team-specific home-court challenger was also tested. It
+improved validation log loss slightly, but its bootstrap interval included
+zero, March was effectively tied, and April descriptive performance was
+worse. The global home baseline therefore remains the official specification.

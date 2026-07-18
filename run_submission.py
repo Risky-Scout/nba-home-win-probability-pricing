@@ -53,6 +53,19 @@ def run(root: Path, data_path: Path) -> None:
     execute(
         [
             sys.executable,
+            "research/team_specific_home_effects.py",
+            "--data",
+            str(data_path),
+            "--output-dir",
+            str(root / "research" / "outputs"),
+            "--figure-dir",
+            str(root / "research" / "figures"),
+        ],
+        root,
+    )
+    execute(
+        [
+            sys.executable,
             "validate_submission.py",
             "--root",
             str(root),

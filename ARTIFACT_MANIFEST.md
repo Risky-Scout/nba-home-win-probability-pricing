@@ -97,3 +97,21 @@ python validate_submission.py   --root .   --data /path/to/nba-win-probability-d
 ```
 
 The validator generates no model artifact.
+
+
+## Team-specific home-court research
+
+Run:
+
+```bash
+python research/team_specific_home_effects.py   --data /path/to/nba-win-probability-data.csv   --output-dir research/outputs   --figure-dir research/figures
+```
+
+Generates:
+
+- `research/outputs/team_specific_home_effect_grid.csv`
+- `research/outputs/team_specific_home_effect_summary.csv`
+- `research/outputs/team_specific_home_effect_bootstrap.csv`
+- `research/outputs/team_specific_home_effect_april_descriptive.csv`
+- `research/outputs/team_specific_home_effect_decision.json`
+- `research/figures/team_specific_home_effect_comparison.png`

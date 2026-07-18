@@ -143,6 +143,7 @@ These intervals do not cover:
 ## Challenger families tested
 
 - Reduced feature subsets.
+- Team-specific venue deviations.
 - Pure EWMA.
 - Bayesian-shrunken EWMA.
 - Opponent-adjusted ridge SRS.
