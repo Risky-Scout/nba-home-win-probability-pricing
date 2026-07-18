@@ -25,6 +25,11 @@ from itertools import product
 from pathlib import Path
 from typing import Iterable
 
+from project_runtime import require_supported_python
+
+require_supported_python()
+
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd

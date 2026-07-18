@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import tomllib
 from pathlib import Path
+
+from project_runtime import require_supported_python
+
+require_supported_python()
+
 
 import numpy as np
 import pandas as pd
@@ -16,6 +22,7 @@ REQUIRED_FILES = {
     "MODEL_CARD.md",
     "LIMITATIONS_AND_ROADMAP.md",
     "ARTIFACT_MANIFEST.md",
+    "CONTRIBUTING.md",
     "nba_win_probability.py",
     "enhanced_governance.py",
     "challenger_analysis.py",
@@ -25,9 +32,24 @@ REQUIRED_FILES = {
     "requirements.txt",
     "requirements-challengers.txt",
     "requirements-dev.txt",
+    "pyproject.toml",
+    ".python-version",
+    ".gitignore",
+    "project_runtime.py",
+    "scripts/check_python.py",
+    "scripts/__init__.py",
+    "scripts/check_repository_policy.py",
+    "scripts/validate_committed_artifacts.py",
+    "scripts/run_quality_checks.sh",
+    "scripts/bootstrap_macos.sh",
+    "tests/test_runtime_contract.py",
+    "tests/test_repository_configuration.py",
+    ".github/workflows/tests.yml",
+    ".github/dependabot.yml",
     "MODEL_EVOLUTION.md",
     "REPRODUCIBILITY.md",
     "research/TEAM_SPECIFIC_HOME_EFFECTS.md",
+    "research/__init__.py",
     "research/team_specific_home_effects.py",
     "research/outputs/team_specific_home_effect_grid.csv",
     "research/outputs/team_specific_home_effect_summary.csv",
@@ -88,33 +110,99 @@ def validate_files(root: Path) -> None:
 
 
 def validate_requirements(root: Path) -> None:
-    """Confirm tested core and optional dependencies are explicit."""
+    """Confirm package metadata, locks, and supported Python are synchronized."""
 
-    core = {
-        line.strip()
-        for line in (root / "requirements.txt").read_text(
-            encoding="utf-8"
-        ).splitlines()
-        if line.strip() and not line.startswith("#")
-    }
+    metadata = tomllib.loads(
+        (root / "pyproject.toml").read_text(encoding="utf-8")
+    )
+    project = metadata["project"]
+
+    if project["requires-python"] != ">=3.11,<3.14":
+        fail("pyproject.toml does not enforce Python 3.11-3.13.")
+
     expected_core = {
         "numpy==2.3.5",
         "pandas==2.2.3",
         "scikit-learn==1.8.0",
         "matplotlib==3.10.8",
     }
-    if core != expected_core:
-        fail("requirements.txt does not match the tested core environment.")
+    if set(project["dependencies"]) != expected_core:
+        fail("Core dependencies in pyproject.toml changed unexpectedly.")
 
-    optional = {
-        line.strip()
-        for line in (root / "requirements-challengers.txt").read_text(
-            encoding="utf-8"
-        ).splitlines()
-        if line.strip() and not line.startswith("#")
+    expected_dev = {
+        "pytest==9.0.2",
+        "PyYAML==6.0.3",
     }
-    if "-r requirements.txt" not in optional:
-        fail("Optional requirements do not include the core environment.")
+    if set(project["optional-dependencies"]["dev"]) != expected_dev:
+        fail("Development dependencies changed unexpectedly.")
+
+    expected_challengers = {
+        "xgboost==3.1.3",
+        "catboost==1.2.8",
+        "shap==0.50.0",
+        "scipy==1.17.0",
+    }
+    if (
+        set(project["optional-dependencies"]["challengers"])
+        != expected_challengers
+    ):
+        fail("Challenger dependencies changed unexpectedly.")
+
+    requirement_expectations = {
+        "requirements.txt": "-e .",
+        "requirements-dev.txt": "-e .[dev]",
+        "requirements-challengers.txt": "-e .[challengers]",
+    }
+    for filename, expected in requirement_expectations.items():
+        lines = [
+            line.strip()
+            for line in (root / filename).read_text(
+                encoding="utf-8"
+            ).splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        ]
+        if lines != [expected]:
+            fail(f"{filename} is not synchronized with pyproject.toml.")
+
+    if (
+        root.joinpath(".python-version").read_text(
+            encoding="utf-8"
+        ).strip()
+        != "3.12.13"
+    ):
+        fail(".python-version must identify the recommended Python 3.12.13.")
+
+
+def validate_workflow(root: Path) -> None:
+    """Confirm CI uses supported runtimes and warning-clean commands."""
+
+    workflow = (
+        root / ".github/workflows/tests.yml"
+    ).read_text(encoding="utf-8")
+
+    required_fragments = {
+        "actions/checkout@v7.0.0",
+        "actions/setup-python@v6.3.0",
+        'PIP_DISABLE_PIP_VERSION_CHECK: "1"',
+        "fail-fast: false",
+        '- "3.11"',
+        '- "3.12"',
+        '- "3.13"',
+        "python -m pytest -q",
+        "python scripts/check_repository_policy.py",
+        "python scripts/validate_committed_artifacts.py",
+        "persist-credentials: false",
+    }
+    missing = sorted(
+        fragment
+        for fragment in required_fragments
+        if fragment not in workflow
+    )
+    if missing:
+        fail(f"CI workflow is missing required controls: {missing}")
+
+    if "pytest -q" in workflow.replace("python -m pytest -q", ""):
+        fail("CI contains a fragile bare pytest invocation.")
 
 
 def validate_predictions(root: Path, source_csv: Path) -> None:
@@ -159,13 +247,13 @@ def validate_predictions(root: Path, source_csv: Path) -> None:
     if not np.allclose(
         predictions["fair_home_decimal_odds"],
         1.0 / predictions["home_win_probability"],
-        atol=1e-5,
+        atol=1e-9,
     ):
         fail("Official home fair odds are inconsistent.")
     if not np.allclose(
         predictions["fair_away_decimal_odds"],
         1.0 / (1.0 - predictions["home_win_probability"]),
-        atol=1e-5,
+        atol=1e-9,
     ):
         fail("Official away fair odds are inconsistent.")
 
@@ -454,6 +542,7 @@ def run(root: Path, source_csv: Path) -> None:
 
     validate_files(root)
     validate_requirements(root)
+    validate_workflow(root)
     validate_predictions(root, source_csv)
     validate_home_advantage(root)
     validate_selection(root)
@@ -461,7 +550,8 @@ def run(root: Path, source_csv: Path) -> None:
     validate_collinearity(root)
     validate_team_specific_home_effects(root)
     print(
-        "PASS: files, dependencies, 96 April IDs, probabilities, odds, "
+        "PASS: files, package metadata, CI workflow, 96 April IDs, "
+        "probabilities, odds, "
         "uncertainty intervals, home advantage, governance selection, "
         "calibration, collinearity and team-specific venue artifacts are "
         "internally consistent."

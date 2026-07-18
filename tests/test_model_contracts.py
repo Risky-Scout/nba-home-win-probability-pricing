@@ -4,8 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from project_runtime import require_supported_python
+
+require_supported_python()
+
 import numpy as np
 import pandas as pd
+import pytest
 
 import nba_win_probability as model
 
@@ -141,3 +146,47 @@ def test_fair_odds_identity() -> None:
 
     implied_sum = 1.0 / home_odds + 1.0 / away_odds
     assert np.allclose(implied_sum, 1.0)
+
+
+def test_duplicate_game_id_is_rejected(tmp_path: Path) -> None:
+    """Duplicate identifiers must fail before modeling."""
+
+    games = synthetic_games()
+    games.loc[1, "game_id"] = games.loc[0, "game_id"]
+    path = tmp_path / "duplicate.csv"
+    games.to_csv(path, index=False)
+
+    with pytest.raises(ValueError, match="game_id is not unique"):
+        model.load_and_validate(path)
+
+
+def test_inconsistent_pregame_record_is_rejected(tmp_path: Path) -> None:
+    """A stale or shifted pregame record must fail at the exact row."""
+
+    games = synthetic_games()
+    games.loc[1, "away_wins"] = 0
+    path = tmp_path / "record_mismatch.csv"
+    games.to_csv(path, index=False)
+
+    with pytest.raises(ValueError, match="Pregame record mismatch"):
+        model.load_and_validate(path)
+
+
+def test_model_probabilities_are_strictly_bounded() -> None:
+    """The fitted logistic link must return finite probabilities in (0, 1)."""
+
+    features = pd.DataFrame(
+        {
+            "net_wins_diff": [-5.0, -2.0, 2.0, 5.0],
+            "cumulative_margin_diff": [-50.0, -20.0, 20.0, 50.0],
+            "recent_margin_evidence_diff": [-80.0, -25.0, 25.0, 80.0],
+        }
+    )
+    outcome = pd.Series([0, 0, 1, 1])
+
+    fitted = model.make_model(0.0075)
+    fitted.fit(features, outcome)
+    probability = fitted.predict_proba(features)[:, 1]
+
+    assert np.isfinite(probability).all()
+    assert ((probability > 0.0) & (probability < 1.0)).all()

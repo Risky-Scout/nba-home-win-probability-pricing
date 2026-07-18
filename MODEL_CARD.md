@@ -31,6 +31,14 @@ The model is suitable for:
 - Claims of guaranteed profitability.
 - Automated stake or liability decisions.
 
+## Supported runtime
+
+- Python 3.11-3.13.
+- Python 3.12.13 recommended.
+- Python 3.14 rejected before compiled numerical imports.
+- Exact direct dependencies are declared in `pyproject.toml`.
+- GitHub Actions tests Python 3.11, 3.12, and 3.13.
+
 ## Target
 
 \[

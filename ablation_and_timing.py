@@ -11,6 +11,11 @@ import time
 from pathlib import Path
 from typing import Callable
 
+from project_runtime import require_supported_python
+
+require_supported_python()
+
+
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import ExtraTreesClassifier

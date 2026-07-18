@@ -1,5 +1,8 @@
 # NBA Home-Win Probability — Final Sportsbook Submission
 
+[![CI](https://github.com/Risky-Scout/nba-home-win-probability-pricing/actions/workflows/tests.yml/badge.svg)](https://github.com/Risky-Scout/nba-home-win-probability-pricing/actions/workflows/tests.yml)
+
+
 ## Objective
 
 Estimate the home team's probability of winning each April NBA game using
@@ -297,14 +300,42 @@ A production trading layer would add:
 8. April has already been examined descriptively and is not represented as a
    pristine untouched test.
 
+## Supported Python
+
+This repository supports **Python 3.11, 3.12, and 3.13**. Python 3.12 is
+recommended and is tested in CI.
+
+Python 3.14 is intentionally rejected before pandas, NumPy, or scikit-learn
+load. This prevents opaque compiled-extension crashes on unsupported
+environments.
+
+### One-command macOS setup
+
+```bash
+bash scripts/bootstrap_macos.sh
+```
+
+The script installs Homebrew Python 3.12 when necessary, recreates `.venv`,
+installs the exact development environment, and runs every data-free quality
+check.
+
+### Manual setup
+
+```bash
+brew install python@3.12
+rm -rf .venv
+"$(brew --prefix python@3.12)/bin/python3.12" -m venv .venv
+source .venv/bin/activate
+
+python scripts/check_python.py
+python -m pip install --upgrade pip
+python -m pip install -r requirements-dev.txt
+bash scripts/run_quality_checks.sh
+```
+
 ## Run the champion
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-
 python nba_win_probability.py \
   --data /path/to/nba-win-probability-data.csv \
   --output-dir outputs
@@ -347,6 +378,11 @@ python validate_submission.py \
 - `MODEL_CARD.md`: intended use, evidence and restrictions.
 - `LIMITATIONS_AND_ROADMAP.md`: explicit weaknesses and production research.
 - `SUMMARY.md`: recruiter-ready brief.
+- `pyproject.toml`: supported Python range and exact dependencies.
+- `project_runtime.py`: fail-fast compatibility contract.
+- `scripts/`: macOS bootstrap and repository-quality checks.
+- `tests/`: leakage, validation, probability, runtime, and CI contracts.
+- `CONTRIBUTING.md`: supported environment and pre-commit checks.
 - `outputs/`: predictions and audit artifacts.
 - `figures/`: focused diagnostics.
 

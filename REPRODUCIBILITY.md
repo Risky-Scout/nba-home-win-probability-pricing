@@ -9,11 +9,25 @@ Place it outside or inside the repository locally, then pass its path through
 
 ## Core environment
 
+Supported interpreters are Python 3.11-3.13. Python 3.12.13 is the
+recommended local interpreter.
+
 ```bash
-python3 -m venv .venv
+brew install python@3.12
+rm -rf .venv
+"$(brew --prefix python@3.12)/bin/python3.12" -m venv .venv
 source .venv/bin/activate
+
+python scripts/check_python.py
 python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
+python -m pip check
+```
+
+On macOS, the equivalent one-command setup is:
+
+```bash
+bash scripts/bootstrap_macos.sh
 ```
 
 ## Official model
@@ -46,7 +60,7 @@ python challenger_analysis.py   --data /path/to/nba-win-probability-data.csv   -
 
 ```bash
 python -m pip install -r requirements-dev.txt
-pytest -q
+python -m pytest -q
 ```
 
 ## Submission validator
@@ -58,3 +72,20 @@ python validate_submission.py   --root .   --data /path/to/nba-win-probability-d
 The validator checks identifiers, probability bounds, fair-odds identities,
 home advantage, model selection, uncertainty outputs, calibration diagnostics
 and collinearity artifacts.
+
+
+## Complete data-free quality gate
+
+```bash
+bash scripts/run_quality_checks.sh
+```
+
+This command verifies:
+
+- Supported Python.
+- Installed dependency consistency.
+- Python compilation.
+- Warning-clean unit tests.
+- Public-repository privacy policy.
+- Committed CSV, JSON, PNG, probability, odds, and governance artifacts.
+- Git whitespace integrity.

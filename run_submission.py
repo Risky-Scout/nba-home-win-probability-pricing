@@ -7,6 +7,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+from project_runtime import require_supported_python
+
+require_supported_python()
+
+
 
 def execute(command: list[str], cwd: Path) -> None:
     """Run one command and stop on failure."""

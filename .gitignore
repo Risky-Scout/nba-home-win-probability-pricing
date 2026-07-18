@@ -1,5 +1,27 @@
+# Python environments and bytecode
 .venv/
+venv/
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+
+# Test, lint, and coverage caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Editors and operating systems
 .DS_Store
+.vscode/
+.idea/
+
+# Supplied data is not redistributed
 nba-win-probability-data.csv

@@ -65,6 +65,24 @@ March was effectively tied, and April descriptive performance was worse.
 
 It remains a shadow challenger rather than the production champion.
 
+## Stage 6 — Runtime and CI reliability hardening
+
+The public repository was converted into an installable Python project with:
+
+- An explicit Python 3.11-3.13 compatibility contract.
+- Python 3.12.13 as the recommended local interpreter.
+- Fail-fast rejection of unsupported Python 3.14 before compiled numerical
+  extensions load.
+- Centralized dependency metadata in `pyproject.toml`.
+- Warning-clean tests across Python 3.11, 3.12, and 3.13 in GitHub Actions.
+- Current Node 24-compatible GitHub actions.
+- Repository privacy, credential, cache, artifact, and fair-odds checks.
+- A canonical ten-decimal probability-and-odds serialization contract.
+- A one-command macOS bootstrap and quality gate.
+
+These changes improve operational reliability without changing the selected
+model architecture or its underlying probabilities.
+
 ## Final decision rule
 
 A change enters the official price only when it produces:

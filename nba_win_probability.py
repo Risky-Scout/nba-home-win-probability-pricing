@@ -8,6 +8,11 @@ import math  # Converts an intuitive half-life into an EWMA update rate.
 from dataclasses import dataclass  # Stores each team's pregame state explicitly.
 from pathlib import Path  # Handles file paths portably.
 
+from project_runtime import require_supported_python
+
+require_supported_python()
+
+
 import matplotlib.pyplot as plt  # Creates compact interview-ready diagnostics.
 import numpy as np  # Supports vectorized probability calculations.
 import pandas as pd  # Loads and processes the game-level data.
@@ -352,10 +357,12 @@ def run(data_path: Path, output_dir: Path) -> None:  # Executes the complete aud
     if sequential_april["game_id"].tolist() != frozen_april["game_id"].tolist():  # Protects against silent probability-row misalignment.
         raise ValueError("Frozen and sequential April rows are not aligned.")  # Stops before writing incorrect prices.
     predictions = sequential_april.copy()  # Creates the final clean output table.
-    predictions["home_win_probability"] = frozen_probability  # Uses the strict March-31 cutoff as the official answer.
-    predictions["daily_repricing_probability"] = daily_probability  # Shows the operational sportsbook timing sensitivity.
-    predictions["fair_home_decimal_odds"] = 1.0 / predictions["home_win_probability"]  # Converts the fair home probability to zero-margin decimal odds.
-    predictions["fair_away_decimal_odds"] = 1.0 / (1.0 - predictions["home_win_probability"])  # Converts the complement to zero-margin away odds.
+    submitted_probability = np.round(frozen_probability, 10)  # Defines one canonical submitted probability before deriving any displayed odds.
+    submitted_daily_probability = np.round(daily_probability, 10)  # Applies the same serialization contract to the operational repricing illustration.
+    predictions["home_win_probability"] = submitted_probability  # Uses the strict March-31 cutoff as the official answer.
+    predictions["daily_repricing_probability"] = submitted_daily_probability  # Shows the operational sportsbook timing sensitivity.
+    predictions["fair_home_decimal_odds"] = 1.0 / submitted_probability  # Derives fair home odds from the exact probability written to the output.
+    predictions["fair_away_decimal_odds"] = 1.0 / (1.0 - submitted_probability)  # Derives fair away odds from the same canonical submitted price.
     coefficients = coefficient_table(final_model)  # Extracts final effect sizes and the equal-strength home-court baseline.
     standardized_intercept_row = coefficients.loc[coefficients["term"] == "standardized_intercept"].iloc[0]  # Retrieves the fitted centered-scale intercept.
     home_advantage_row = coefficients.loc[coefficients["term"] == "equal_strength_home_advantage"].iloc[0]  # Retrieves the sportsbook-relevant equal-team baseline.
@@ -367,13 +374,13 @@ def run(data_path: Path, output_dir: Path) -> None:  # Executes the complete aud
         "equal_strength_home_odds_multiplier": float(home_advantage_row["odds_multiplier"]),
     }
     april_metrics = pd.DataFrame([  # Descriptively scores the locked frozen prices against supplied April outcomes.
-        {"model": "selected_three_feature_logistic", "split": "April descriptive audit", "n": len(frozen_april), **probability_metrics(frozen_april["home_win"], frozen_probability)}
+        {"model": "selected_three_feature_logistic", "split": "April descriptive audit", "n": len(frozen_april), **probability_metrics(frozen_april["home_win"], submitted_probability)}
     ])
     validation_grid.to_csv(output_dir / "validation_grid.csv", index=False)  # Preserves every tuning result.
     march_metrics.to_csv(output_dir / "march_temporal_check_metrics.csv", index=False)  # Saves the pre-April benchmark comparison.
     march_calibration.to_csv(output_dir / "march_calibration_bins.csv", index=False)  # Saves reliability diagnostics.
     coefficients.to_csv(output_dir / "final_model_coefficients.csv", index=False)  # Saves interpretable final effects.
-    predictions.to_csv(output_dir / "april_predictions.csv", index=False, float_format="%.6f")  # Saves the requested probabilities and fair odds.
+    predictions.to_csv(output_dir / "april_predictions.csv", index=False, float_format="%.10f")  # Saves one internally consistent ten-decimal probability-and-odds contract.
     april_metrics.to_csv(output_dir / "april_descriptive_metrics.csv", index=False)  # Saves the post-forecast descriptive audit.
     with (output_dir / "selected_hyperparameters.json").open("w", encoding="utf-8") as file:  # Opens a reproducibility record.
         json.dump({"half_life": half_life, "C": selected_c, "features": FEATURE_COLUMNS}, file, indent=2)  # Writes every locked model choice.

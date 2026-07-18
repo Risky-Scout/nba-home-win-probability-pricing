@@ -29,6 +29,14 @@ import sys
 from pathlib import Path
 from typing import Iterable
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from project_runtime import require_supported_python  # noqa: E402
+
+require_supported_python()
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -41,10 +49,6 @@ from sklearn.metrics import (
 )
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
 
 import nba_win_probability as champion  # noqa: E402
 

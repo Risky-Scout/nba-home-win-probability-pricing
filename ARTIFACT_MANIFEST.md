@@ -115,3 +115,18 @@ Generates:
 - `research/outputs/team_specific_home_effect_april_descriptive.csv`
 - `research/outputs/team_specific_home_effect_decision.json`
 - `research/figures/team_specific_home_effect_comparison.png`
+
+
+## Repository quality utilities
+
+These scripts generate no model output:
+
+- `scripts/check_python.py`: rejects unsupported Python before numerical
+  extensions load.
+- `scripts/check_repository_policy.py`: rejects private files, source data,
+  caches, compiled files, and obvious credentials.
+- `scripts/validate_committed_artifacts.py`: validates committed predictions,
+  fair odds, uncertainty, governance tables, JSON, and PNG signatures.
+- `scripts/run_quality_checks.sh`: runs the complete data-free quality gate.
+- `scripts/bootstrap_macos.sh`: creates a clean Python 3.12 environment and
+  executes the quality gate.
