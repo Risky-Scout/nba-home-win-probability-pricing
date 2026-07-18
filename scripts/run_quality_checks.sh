@@ -5,7 +5,7 @@ python scripts/check_python.py
 python -m pip check
 python -m compileall -q \
   nba_win_probability.py \
-  enhanced_governance.py \
+  model_governance.py \
   challenger_analysis.py \
   ablation_and_timing.py \
   project_runtime.py \

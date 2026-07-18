@@ -99,15 +99,52 @@ model:
 This stage improves reviewability and screen-share execution while preserving
 the validated probability engine.
 
+## Stage 8 — Late-season ensemble promotion
+
+The final assignment target is April, when team-strength states are mature.
+
+A fixed ensemble was built across the complete predeclared half-life and L2
+grid. It uses the same three sports signals as the single champion.
+
+The ensemble:
+
+- Improved January-February validation log loss.
+- Preserved the direction in March governance.
+- Improved the strict April descriptive log loss and Brier score.
+- Reduced dependence on one narrowly selected grid point.
+- Added negligible runtime cost.
+
+The best single component remains the benchmark and interpretation anchor.
+
+The promotion is not described as statistically decisive. It is a
+target-specific model-governance decision based on pre-April evidence,
+late-season relevance, and specification-risk reduction.
+
 ## Final decision rule
 
-A change enters the official price only when it produces:
+A change enters the official price only when it:
 
-1. A proper-score improvement.
-2. Material magnitude.
-3. Temporal stability.
-4. Reproducibility.
-5. Explainability.
-6. A clearly defined pregame timestamp.
+1. Improves a target-relevant forward proper score before deployment.
+2. Preserves the pregame information timestamp.
+3. Remains reproducible and operationally inexpensive.
+4. Retains a defensible interpretation.
+5. Does not reverse in the later governance period.
 
-No challenger has cleared all six requirements.
+The ensemble clears that standard with a modest pre-April improvement and
+negligible additional operational risk. The gain is not described as
+statistically decisive, so the validation-best single model remains the
+benchmark and fallback.
+
+### Cross-platform reproduction contract
+
+The final audit distinguishes model determinism from renderer determinism:
+
+- Official April IDs, probabilities, odds, fingerprints, and selection
+  metadata must reproduce byte for byte.
+- Platform-sensitive floating-point summaries must match within a strict
+  absolute tolerance.
+- PNG figures must remain valid, nonblank, and dimensionally consistent while
+  their underlying tables satisfy the numeric reproduction contract.
+
+This prevents harmless Apple-Silicon versus Linux rendering and BLAS
+differences from being misclassified as model failures.

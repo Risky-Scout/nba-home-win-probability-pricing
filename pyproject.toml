@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nba-home-win-probability-pricing"
-version = "1.3.0"
+version = "1.4.0"
 description = "Leakage-safe NBA home-win probability pricing and governance"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
@@ -33,11 +33,11 @@ challengers = [
 [tool.setuptools]
 py-modules = [
   "nba_win_probability",
-  "enhanced_governance",
   "challenger_analysis",
   "ablation_and_timing",
   "project_runtime",
   "run_submission",
+  "model_governance",
   "validate_submission",
 ]
 packages = ["research"]

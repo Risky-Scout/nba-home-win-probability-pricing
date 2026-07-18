@@ -1,0 +1,2 @@
+model,split,n,log_loss,brier_score,roc_auc,accuracy_0_5,mean_probability,actual_home_win_rate
+validation_best_single_component,April post-lock descriptive benchmark,96,0.4685961582518976,0.15062765286948054,0.8681961313540261,0.8125,0.5460509730260417,0.59375

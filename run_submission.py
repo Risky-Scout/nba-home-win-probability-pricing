@@ -45,7 +45,7 @@ def run(root: Path, data_path: Path) -> None:
     execute(
         [
             sys.executable,
-            "enhanced_governance.py",
+            "model_governance.py",
             "--data",
             str(data_path),
             "--output-dir",

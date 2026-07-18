@@ -1,0 +1,4 @@
+,net_wins_diff,cumulative_margin_diff,recent_margin_evidence_diff
+net_wins_diff,1.0,0.9547267739310613,0.8634508354783792
+cumulative_margin_diff,0.9547267739310613,1.0,0.9159599668855466
+recent_margin_evidence_diff,0.8634508354783792,0.9159599668855466,1.0

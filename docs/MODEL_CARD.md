@@ -2,42 +2,33 @@
 
 ## Model name
 
-Regularized Three-Signal NBA Home-Win Probability Model
+Late-Season Hyperparameter-Averaged NBA Home-Win Probability Model
 
 ## Version
 
-Final technical-task governance version.
+v1.4 — ensemble champion.
 
 ## Intended use
 
-Estimate a fundamental pregame home-win probability for NBA games when only
-the supplied team-level season history is available.
+Estimate a fundamental pregame home-win probability for April NBA games when
+only the supplied team-level season history is available.
 
-The model is suitable for:
+Suitable for:
 
 - The bet365 technical assignment.
-- A transparent fundamental probability baseline.
+- A transparent late-season fundamental probability baseline.
 - Model comparison and trader review.
 - Demonstrating leakage-safe chronological modeling.
 - Converting fair probability into zero-margin decimal odds.
 
 ## Not intended for
 
-- Direct production customer pricing without additional information.
+- Direct customer pricing without additional information.
 - In-play pricing.
-- Player prop markets.
-- Point-spread or totals pricing.
+- Player props.
 - Injury-sensitive pricing without lineup data.
+- Automated liability or staking decisions.
 - Claims of guaranteed profitability.
-- Automated stake or liability decisions.
-
-## Supported runtime
-
-- Python 3.11-3.13.
-- Python 3.12.13 recommended.
-- Python 3.14 rejected before compiled numerical imports.
-- Exact direct dependencies are declared in `pyproject.toml`.
-- GitHub Actions tests Python 3.11, 3.12, and 3.13.
 
 ## Target
 
@@ -49,11 +40,13 @@ when the home team wins, otherwise zero.
 
 ## Information cutoff
 
-The official April probability uses a strict March 31 snapshot.
+Official April prices use a strict March 31 snapshot.
 
-Current-game box-score information affects only later games.
+Current-game box-score values update only later games.
 
 ## Features
+
+Every component uses:
 
 1. `net_wins_diff`
 2. `cumulative_margin_diff`
@@ -63,134 +56,107 @@ All features are home minus away.
 
 ## Model family
 
-L2-regularized logistic regression with training-only standardization.
+Uniform arithmetic mean of 40 L2-regularized logistic
+paired-comparison models.
 
-## Selected hyperparameters
+Hyperparameter set:
 
-- EWMA half-life: 12 games.
-- Logistic `C`: 0.0075.
-- Random seed: 365.
+- Half-lives: 5, 8, 12, 16, 24 games.
+- `C`: 0.003, 0.005, 0.0075, 0.01, 0.015, 0.02, 0.03, 0.05.
 
-## Equal-strength home baseline
+Weights:
 
-- Log odds: 0.221501
-- Home-win probability:
-  55.515%
-- Odds multiplier:
-  1.2479x
+- 0.025 per component.
+- Fixed and untuned.
 
-## Primary model-selection metric
+## Selection protocol
+
+- October-December: fit candidate components.
+- January-February: compare ensemble and single benchmark.
+- March: governance check.
+- October-March: final component refit.
+- April: requested forecast period and descriptive audit.
+
+March was used for promotion governance, not for component or weight tuning.
+
+April outcomes were not used to choose the grid or weights.
+
+## Primary metric
 
 Forward log loss.
 
 ## Secondary metrics
 
 - Brier score.
+- Calibration-in-the-large.
 - Reliability by price band.
-- Calibration intercept and slope.
 - ROC AUC.
-- 0.50-threshold accuracy.
-- Computational latency.
-- Probability and coefficient stability.
+- Accuracy.
+- Runtime.
+- Component dispersion.
 
-## Development design
+## Pre-April evidence
 
-- Train: October-December.
-- Validate: January-February.
-- Governance check: March.
-- Final fit: October-March.
-- Forecast: April.
+- Ensemble validation log loss:
+  0.627259
+- Single validation log loss:
+  0.627529
+- Ensemble March log loss:
+  0.508638
+- Single March log loss:
+  0.509645
 
-March is not described as a perfectly untouched test because it later
-informed model-governance decisions.
+## April descriptive evidence
 
-## March evidence
+- Log loss: 0.467607
+- Brier score: 0.150287
+- ROC AUC: 0.865497
+- Accuracy: 80.208%
 
-- Log loss: 0.509645
-- Brier score: 0.167618
-- ROC AUC: 0.823538
-- Mean probability: 54.743%
-- Actual home-win rate:
-  60.251%
-- Calibration gap:
-  5.508%
-- Calibration slope: 1.341
+## Equal-strength home baseline
 
-Date-block bootstrap 95% interval for the calibration gap:
+Average component home-win probability:
 
-[
-0.886%,
-10.192%
-]
+55.568%
 
-## Calibration decision
+## Interpretability
 
-No additional calibration layer.
+The ensemble is interpreted at two levels:
 
-Identity, Platt, beta and isotonic mappings were compared prospectively.
-Additional mappings did not improve the next-period scores.
+1. Sports-feature level: all components use the same three signals.
+2. Component level: each logistic coefficient vector is exported.
 
-## Model uncertainty
+The validation-best single component remains the primary coefficient-level
+benchmark.
 
-The supplemental April uncertainty file contains date-block bootstrap
-intervals around coefficient estimation.
+## Uncertainty
 
-Median 90% interval width:
+`outputs/april_component_dispersion.csv` reports the range of probabilities
+across plausible components.
 
-5.650%
-
-These intervals do not cover:
-
-- Injuries.
-- Lineups.
-- Player minutes.
-- Market information.
-- Structural model error.
-- Data-source error.
-
-## Challenger families tested
-
-- Reduced feature subsets.
-- Team-specific venue deviations.
-- Pure EWMA.
-- Bayesian-shrunken EWMA.
-- Opponent-adjusted ridge SRS.
-- PCA latent factors.
-- Elo.
-- XGBoost.
-- Residual XGBoost.
-- Random forest.
-- ExtraTrees.
-- CatBoost.
-- Convex probability ensembles.
-- Platt, beta and isotonic calibration.
-- Rich lagged turnover, rebound, foul and schedule features.
-
-## Selection decision
-
-The architecture is retained because no opponent-adjusted, Bayesian-shrunk, pure-EWMA, PCA, or reduced-feature challenger produces a material and temporally stable proper-score improvement.
+This is specification dispersion, not full predictive uncertainty. It excludes
+injuries, lineups, market information, data-source error, and structural model
+risk.
 
 ## Known risks
 
 - One season only.
-- No external-season validation.
-- High feature correlation.
-- No player-level information.
-- Cumulative margin is not pace-adjusted.
-- March home outcomes were underpriced on average.
-- Evidence-weighted EWMA is unusual.
+- Small differences between ensemble and benchmark.
+- Hyperparameter-grid density acts like a discrete prior.
+- Features are correlated.
+- No injuries, players, possessions, or market prices.
+- Late-season competitive regimes may shift.
 - April outcomes have been viewed descriptively and are not pristine.
 
-## Monitoring requirements in production
+## Monitoring in production
 
-- Log loss and Brier score over time.
-- Calibration-in-the-large.
-- Calibration slope.
-- Reliability by price band.
+- Log loss and Brier score.
+- Calibration-in-the-large and slope.
+- Component dispersion.
 - Prediction-distribution drift.
-- Feature freshness.
-- Injury and lineup data latency.
-- Closing-line value.
+- Data freshness.
+- Injury and lineup latency.
+- Market disagreement.
 - Trader overrides.
 - Liability and P&L.
-- Challenger-model comparison.
+- Single benchmark fallback.

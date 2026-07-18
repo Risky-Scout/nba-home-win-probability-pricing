@@ -3,6 +3,7 @@
 from __future__ import annotations  # Keeps type annotations forward-compatible.
 
 import argparse  # Provides a reproducible command-line interface.
+import hashlib  # Fingerprints the exact source data used for the run.
 import json  # Writes selected parameters in a machine-readable format.
 import math  # Converts an intuitive half-life into an EWMA update rate.
 from dataclasses import dataclass  # Stores each team's pregame state explicitly.
@@ -188,31 +189,6 @@ def probability_metrics(y_true: pd.Series | np.ndarray, probability: np.ndarray)
     }
 
 
-def tune_model(data: pd.DataFrame) -> tuple[float, float, pd.DataFrame, pd.DataFrame]:  # Selects half-life and L2 strength using only January-February.
-    candidates: list[dict[str, float]] = []  # Preserves every validation result for auditability.
-    feature_tables: dict[float, pd.DataFrame] = {}  # Avoids rebuilding identical features for each C value.
-    for half_life in HALF_LIFE_GRID:  # Tests the predeclared recent-form memory values.
-        features = build_sequential_features(data, half_life)  # Builds leakage-safe features for this half-life.
-        feature_tables[half_life] = features  # Caches the result for the selected model.
-        train_mask = features["game_date"] <= TRAIN_END  # Uses October-December for coefficient estimation.
-        validation_mask = features["game_date"].between(VALIDATION_START, VALIDATION_END)  # Uses January-February only for selection.
-        for c_value in C_GRID:  # Tests progressively weaker L2 shrinkage.
-            model = make_model(c_value)  # Creates a fresh pipeline for this candidate.
-            model.fit(features.loc[train_mask, FEATURE_COLUMNS], features.loc[train_mask, "home_win"])  # Fits without validation leakage.
-            probability = model.predict_proba(features.loc[validation_mask, FEATURE_COLUMNS])[:, 1]  # Produces forward validation prices.
-            candidates.append({  # Records parameters and all validation diagnostics.
-                "half_life": half_life,
-                "C": c_value,
-                "n": int(validation_mask.sum()),
-                **probability_metrics(features.loc[validation_mask, "home_win"], probability),
-            })
-    grid = pd.DataFrame(candidates).sort_values(["log_loss", "brier_score", "C"]).reset_index(drop=True)  # Applies the predeclared metric hierarchy.
-    best = grid.iloc[0]  # Locks the lowest-log-loss candidate before examining March.
-    selected_half_life = float(best["half_life"])  # Extracts the chosen recent-form memory.
-    selected_c = float(best["C"])  # Extracts the chosen L2 strength.
-    return selected_half_life, selected_c, grid, feature_tables[selected_half_life]  # Returns the locked model specification and audit table.
-
-
 def tune_reduced_baseline(features: pd.DataFrame, columns: list[str]) -> float:  # Tunes a reduced challenger fairly on the same validation period.
     train_mask = features["game_date"] <= TRAIN_END  # Matches the champion's training window.
     validation_mask = features["game_date"].between(VALIDATION_START, VALIDATION_END)  # Matches the champion's validation window.
@@ -223,31 +199,6 @@ def tune_reduced_baseline(features: pd.DataFrame, columns: list[str]) -> float: 
         probability = model.predict_proba(features.loc[validation_mask, columns])[:, 1]  # Prices January-February.
         results.append((float(log_loss(features.loc[validation_mask, "home_win"], probability)), c_value))  # Records the proper score.
     return min(results)[1]  # Locks the best C before March.
-
-
-def evaluate_march(features: pd.DataFrame, selected_c: float) -> tuple[pd.DataFrame, np.ndarray]:  # Runs the final pre-April temporal robustness check.
-    train_validation_mask = features["game_date"] <= VALIDATION_END  # Uses all information available before March.
-    march_mask = features["game_date"].between(MARCH_START, MARCH_END)  # Identifies March games.
-    y_march = features.loc[march_mask, "home_win"]  # Extracts realized March outcomes.
-    constant_probability = np.full(march_mask.sum(), features.loc[train_validation_mask, "home_win"].mean())  # Defines the historical home-rate baseline.
-    net_wins_c = tune_reduced_baseline(features, ["net_wins_diff"])  # Tunes the result-only challenger without March.
-    net_wins_model = make_model(net_wins_c)  # Recreates the locked result-only model.
-    net_wins_model.fit(features.loc[train_validation_mask, ["net_wins_diff"]], features.loc[train_validation_mask, "home_win"])  # Refits through February.
-    net_wins_probability = net_wins_model.predict_proba(features.loc[march_mask, ["net_wins_diff"]])[:, 1]  # Prices March from results alone.
-    margin_c = tune_reduced_baseline(features, ["cumulative_margin_diff"])  # Tunes the margin-only challenger without March.
-    margin_model = make_model(margin_c)  # Recreates the locked margin-only model.
-    margin_model.fit(features.loc[train_validation_mask, ["cumulative_margin_diff"]], features.loc[train_validation_mask, "home_win"])  # Refits through February.
-    margin_probability = margin_model.predict_proba(features.loc[march_mask, ["cumulative_margin_diff"]])[:, 1]  # Prices March from cumulative margin alone.
-    selected_model = make_model(selected_c)  # Recreates the locked three-feature champion.
-    selected_model.fit(features.loc[train_validation_mask, FEATURE_COLUMNS], features.loc[train_validation_mask, "home_win"])  # Refits through February.
-    selected_probability = selected_model.predict_proba(features.loc[march_mask, FEATURE_COLUMNS])[:, 1]  # Prices March prospectively.
-    metrics = pd.DataFrame([  # Places every March comparison in one auditable table.
-        {"model": "constant_home_rate", "split": "March temporal check", "n": int(march_mask.sum()), "selected_C": np.nan, **probability_metrics(y_march, constant_probability)},
-        {"model": "net_wins_only", "split": "March temporal check", "n": int(march_mask.sum()), "selected_C": net_wins_c, **probability_metrics(y_march, net_wins_probability)},
-        {"model": "cumulative_margin_only", "split": "March temporal check", "n": int(march_mask.sum()), "selected_C": margin_c, **probability_metrics(y_march, margin_probability)},
-        {"model": "selected_three_feature_logistic", "split": "March temporal check", "n": int(march_mask.sum()), "selected_C": selected_c, **probability_metrics(y_march, selected_probability)},
-    ])
-    return metrics, selected_probability  # Returns the benchmark table and game-level champion prices.
 
 
 def calibration_bins(y_true: pd.Series | np.ndarray, probability: np.ndarray, bins: int = 5) -> pd.DataFrame:  # Summarizes reliability with stable sample sizes.
@@ -308,92 +259,666 @@ def coefficient_table(model: Pipeline) -> pd.DataFrame:  # Converts final parame
     return pd.DataFrame(rows)  # Returns one auditable coefficient and home-advantage artifact.
 
 
-def save_figures(march_metrics: pd.DataFrame, calibration: pd.DataFrame, coefficients: pd.DataFrame, figure_dir: Path) -> None:  # Creates concise interview visuals.
-    figure_dir.mkdir(parents=True, exist_ok=True)  # Ensures the destination exists.
-    figure = plt.figure(figsize=(8, 5))  # Opens the model-comparison chart.
-    axis = figure.add_subplot(111)  # Creates one plotting area.
-    axis.bar(march_metrics["model"], march_metrics["log_loss"])  # Compares the primary temporal-check score.
-    axis.set_ylabel("March log loss (lower is better)")  # Labels the decision metric.
-    axis.tick_params(axis="x", rotation=20)  # Prevents long model names from overlapping.
-    figure.tight_layout()  # Keeps all labels visible.
-    figure.savefig(figure_dir / "march_model_comparison.png", dpi=180)  # Saves a screen-share-ready image.
-    plt.close(figure)  # Releases plotting memory.
-    figure = plt.figure(figsize=(6, 6))  # Opens the reliability diagram.
-    axis = figure.add_subplot(111)  # Creates one calibration plotting area.
-    axis.plot([0, 1], [0, 1], linestyle="--", label="perfect calibration")  # Adds the ideal reference.
-    axis.plot(calibration["mean_probability"], calibration["actual_home_win_rate"], marker="o", label="selected model")  # Plots observed versus forecast rates.
-    axis.set_xlabel("Mean predicted home-win probability")  # Labels forecast confidence.
-    axis.set_ylabel("Observed home-win rate")  # Labels realized frequency.
-    axis.legend()  # Identifies the lines.
-    figure.tight_layout()  # Avoids clipped labels.
-    figure.savefig(figure_dir / "march_calibration.png", dpi=180)  # Saves the reliability chart.
-    plt.close(figure)  # Releases plotting memory.
-    figure = plt.figure(figsize=(8, 5))  # Opens the standardized coefficient chart.
-    axis = figure.add_subplot(111)  # Creates one coefficient plotting area.
-    axis.bar(coefficients["feature"], coefficients["coefficient_per_one_sd"])  # Shows directly comparable effects.
-    axis.set_ylabel("Log-odds coefficient per 1 SD")  # Explains the standardized units.
-    axis.tick_params(axis="x", rotation=20)  # Keeps feature names readable.
-    figure.tight_layout()  # Avoids clipped labels.
-    figure.savefig(figure_dir / "final_model_coefficients.png", dpi=180)  # Saves the interpretability visual.
-    plt.close(figure)  # Releases plotting memory.
 
+def build_component_feature_tables(
+    data: pd.DataFrame,
+) -> dict[float, pd.DataFrame]:
+    """Build one leakage-safe sequential table for every EWMA half-life."""
 
-def run(data_path: Path, output_dir: Path) -> None:  # Executes the complete auditable workflow.
-    output_dir.mkdir(parents=True, exist_ok=True)  # Creates the artifact directory.
-    data = load_and_validate(data_path)  # Loads and audits the supplied CSV.
-    half_life, selected_c, validation_grid, features = tune_model(data)  # Locks the model using January-February only.
-    march_metrics, march_probability = evaluate_march(features, selected_c)  # Runs the final pre-April temporal check.
-    march_mask = features["game_date"].between(MARCH_START, MARCH_END)  # Recreates the March index for diagnostics.
-    march_calibration = calibration_bins(features.loc[march_mask, "home_win"], march_probability)  # Builds the reliability table.
-    final_train_mask = features["game_date"] <= MARCH_END  # Uses all permitted October-March development data.
-    april_sequential_mask = features["game_date"] >= APRIL_START  # Identifies daily-as-of-game-time April rows.
-    final_model = make_model(selected_c)  # Recreates the locked specification for final fitting.
-    final_model.fit(features.loc[final_train_mask, FEATURE_COLUMNS], features.loc[final_train_mask, "home_win"])  # Refits on all permitted development games.
-    daily_probability = final_model.predict_proba(features.loc[april_sequential_mask, FEATURE_COLUMNS])[:, 1]  # Produces operational daily-repricing probabilities.
-    frozen_features = build_frozen_features(data, half_life, MARCH_END)  # Creates a strict March-31 information snapshot.
-    frozen_april = frozen_features.loc[frozen_features["game_date"] >= APRIL_START].reset_index(drop=True)  # Keeps only requested April games.
-    frozen_probability = final_model.predict_proba(frozen_april[FEATURE_COLUMNS])[:, 1]  # Prices every April game without any April update.
-    sequential_april = features.loc[april_sequential_mask, ["game_id", "game_date", "away", "home"]].reset_index(drop=True)  # Builds the submission identifiers.
-    if sequential_april["game_id"].tolist() != frozen_april["game_id"].tolist():  # Protects against silent probability-row misalignment.
-        raise ValueError("Frozen and sequential April rows are not aligned.")  # Stops before writing incorrect prices.
-    predictions = sequential_april.copy()  # Creates the final clean output table.
-    submitted_probability = np.round(frozen_probability, 10)  # Defines one canonical submitted probability before deriving any displayed odds.
-    submitted_daily_probability = np.round(daily_probability, 10)  # Applies the same serialization contract to the operational repricing illustration.
-    predictions["home_win_probability"] = submitted_probability  # Uses the strict March-31 cutoff as the official answer.
-    predictions["daily_repricing_probability"] = submitted_daily_probability  # Shows the operational sportsbook timing sensitivity.
-    predictions["fair_home_decimal_odds"] = 1.0 / submitted_probability  # Derives fair home odds from the exact probability written to the output.
-    predictions["fair_away_decimal_odds"] = 1.0 / (1.0 - submitted_probability)  # Derives fair away odds from the same canonical submitted price.
-    coefficients = coefficient_table(final_model)  # Extracts final effect sizes and the equal-strength home-court baseline.
-    standardized_intercept_row = coefficients.loc[coefficients["term"] == "standardized_intercept"].iloc[0]  # Retrieves the fitted centered-scale intercept.
-    home_advantage_row = coefficients.loc[coefficients["term"] == "equal_strength_home_advantage"].iloc[0]  # Retrieves the sportsbook-relevant equal-team baseline.
-    home_advantage_summary = {  # Stores both quantities so the centering distinction is explicit.
-        "standardized_intercept_log_odds": float(standardized_intercept_row["coefficient_standardized"]),
-        "standardized_intercept_probability": float(standardized_intercept_row["reference_home_win_probability"]),
-        "equal_strength_home_log_odds": float(home_advantage_row["coefficient_standardized"]),
-        "equal_strength_home_win_probability": float(home_advantage_row["reference_home_win_probability"]),
-        "equal_strength_home_odds_multiplier": float(home_advantage_row["odds_multiplier"]),
+    tables = {
+        half_life: build_sequential_features(data, half_life)
+        for half_life in HALF_LIFE_GRID
     }
-    april_metrics = pd.DataFrame([  # Descriptively scores the locked frozen prices against supplied April outcomes.
-        {"model": "selected_three_feature_logistic", "split": "April descriptive audit", "n": len(frozen_april), **probability_metrics(frozen_april["home_win"], submitted_probability)}
-    ])
-    validation_grid.to_csv(output_dir / "validation_grid.csv", index=False)  # Preserves every tuning result.
-    march_metrics.to_csv(output_dir / "march_temporal_check_metrics.csv", index=False)  # Saves the pre-April benchmark comparison.
-    march_calibration.to_csv(output_dir / "march_calibration_bins.csv", index=False)  # Saves reliability diagnostics.
-    coefficients.to_csv(output_dir / "final_model_coefficients.csv", index=False)  # Saves interpretable final effects.
-    predictions.to_csv(output_dir / "april_predictions.csv", index=False, float_format="%.10f")  # Saves one internally consistent ten-decimal probability-and-odds contract.
-    april_metrics.to_csv(output_dir / "april_descriptive_metrics.csv", index=False)  # Saves the post-forecast descriptive audit.
-    with (output_dir / "selected_hyperparameters.json").open("w", encoding="utf-8") as file:  # Opens a reproducibility record.
-        json.dump({"half_life": half_life, "C": selected_c, "features": FEATURE_COLUMNS}, file, indent=2)  # Writes every locked model choice.
-    with (output_dir / "model_summary.json").open("w", encoding="utf-8") as file:  # Opens the concise fitted-model summary.
-        json.dump({"selected_parameters": {"half_life": half_life, "C": selected_c, "features": FEATURE_COLUMNS}, "home_advantage": home_advantage_summary}, file, indent=2)  # Writes the centered intercept and equal-strength home advantage separately.
-    save_figures(march_metrics, march_calibration, coefficients.loc[coefficients["term_type"] == "feature"].rename(columns={"term": "feature", "coefficient_standardized": "coefficient_per_one_sd"}), output_dir.parent / "figures")  # Creates feature-only presentation graphics.
-    print(json.dumps({  # Prints a concise run summary for screen sharing.
-        "selected_parameters": {"half_life": half_life, "C": selected_c, "features": FEATURE_COLUMNS},
-        "home_advantage": home_advantage_summary,
-        "march_temporal_check": march_metrics.to_dict(orient="records"),
-        "april_descriptive_audit": april_metrics.to_dict(orient="records"),
-        "april_predictions": len(predictions),
-    }, indent=2, default=str))
+    reference_ids = tables[HALF_LIFE_GRID[0]]["game_id"].tolist()
+    for half_life, table in tables.items():
+        if table["game_id"].tolist() != reference_ids:
+            raise ValueError(
+                f"Feature rows are misaligned for half-life {half_life}."
+            )
+    return tables
+
+
+def component_predictions(
+    feature_tables: dict[float, pd.DataFrame],
+    train_end: pd.Timestamp,
+    evaluation_start: pd.Timestamp,
+    evaluation_end: pd.Timestamp,
+    frozen_tables: dict[float, pd.DataFrame] | None = None,
+    return_models: bool = False,
+) -> tuple[np.ndarray, pd.DataFrame, list[Pipeline]]:
+    """Fit every predeclared component and return its probability matrix."""
+
+    prediction_columns: list[np.ndarray] = []
+    component_rows: list[dict[str, float]] = []
+    fitted_models: list[Pipeline] = []
+
+    for half_life in HALF_LIFE_GRID:
+        training_table = feature_tables[half_life]
+        training_mask = training_table["game_date"] <= train_end
+
+        if frozen_tables is None:
+            scoring_table = training_table
+            scoring_mask = scoring_table["game_date"].between(
+                evaluation_start,
+                evaluation_end,
+            )
+            scoring_features = scoring_table.loc[
+                scoring_mask,
+                FEATURE_COLUMNS,
+            ]
+            outcomes = scoring_table.loc[scoring_mask, "home_win"]
+        else:
+            scoring_table = frozen_tables[half_life]
+            scoring_mask = scoring_table["game_date"].between(
+                evaluation_start,
+                evaluation_end,
+            )
+            scoring_features = scoring_table.loc[
+                scoring_mask,
+                FEATURE_COLUMNS,
+            ]
+            outcomes = scoring_table.loc[scoring_mask, "home_win"]
+
+        for c_value in C_GRID:
+            model = make_model(c_value)
+            model.fit(
+                training_table.loc[training_mask, FEATURE_COLUMNS],
+                training_table.loc[training_mask, "home_win"],
+            )
+            probability = model.predict_proba(scoring_features)[:, 1]
+            prediction_columns.append(probability)
+            metrics = probability_metrics(outcomes, probability)
+            component_rows.append(
+                {
+                    "half_life": float(half_life),
+                    "C": float(c_value),
+                    "n": int(len(probability)),
+                    **metrics,
+                }
+            )
+            if return_models:
+                fitted_models.append(model)
+
+    matrix = np.column_stack(prediction_columns)
+    return matrix, pd.DataFrame(component_rows), fitted_models
+
+
+def ensemble_probability(component_matrix: np.ndarray) -> np.ndarray:
+    """Average component probabilities using fixed, untuned equal weights."""
+
+    if component_matrix.ndim != 2:
+        raise ValueError("Component predictions must be a two-dimensional matrix.")
+    if component_matrix.shape[1] != len(HALF_LIFE_GRID) * len(C_GRID):
+        raise ValueError("Unexpected number of ensemble components.")
+    probability = component_matrix.mean(axis=1)
+    if not np.all((probability > 0.0) & (probability < 1.0)):
+        raise ValueError("The ensemble produced an invalid probability.")
+    return probability
+
+
+def validation_audit(
+    feature_tables: dict[float, pd.DataFrame],
+) -> tuple[pd.DataFrame, pd.DataFrame, np.ndarray, dict[str, float]]:
+    """Evaluate every component and the fixed ensemble on January-February."""
+
+    matrix, grid, _ = component_predictions(
+        feature_tables,
+        train_end=TRAIN_END,
+        evaluation_start=VALIDATION_START,
+        evaluation_end=VALIDATION_END,
+    )
+    ensemble = ensemble_probability(matrix)
+    reference = feature_tables[HALF_LIFE_GRID[0]]
+    validation_mask = reference["game_date"].between(
+        VALIDATION_START,
+        VALIDATION_END,
+    )
+    outcomes = reference.loc[validation_mask, "home_win"]
+    train_mask = reference["game_date"] <= TRAIN_END
+    constant = np.full(
+        len(outcomes),
+        reference.loc[train_mask, "home_win"].mean(),
+    )
+
+    grid = grid.sort_values(
+        ["log_loss", "brier_score", "C", "half_life"]
+    ).reset_index(drop=True)
+    best = {
+        "half_life": float(grid.iloc[0]["half_life"]),
+        "C": float(grid.iloc[0]["C"]),
+    }
+    best_index = (
+        list(HALF_LIFE_GRID).index(best["half_life"]) * len(C_GRID)
+        + list(C_GRID).index(best["C"])
+    )
+    best_probability = matrix[:, best_index]
+
+    comparison = pd.DataFrame(
+        [
+            {
+                "model": "constant_home_rate",
+                "split": "January-February validation",
+                "n": len(outcomes),
+                **probability_metrics(outcomes, constant),
+            },
+            {
+                "model": "validation_best_single_component",
+                "split": "January-February validation",
+                "n": len(outcomes),
+                **probability_metrics(outcomes, best_probability),
+            },
+            {
+                "model": "uniform_40_component_logistic_ensemble",
+                "split": "January-February validation",
+                "n": len(outcomes),
+                **probability_metrics(outcomes, ensemble),
+            },
+        ]
+    )
+    return grid, comparison, ensemble, best
+
+
+def march_governance_check(
+    feature_tables: dict[float, pd.DataFrame],
+    best_single: dict[str, float],
+) -> tuple[pd.DataFrame, np.ndarray, pd.DataFrame]:
+    """Run the March governance check after the ensemble rule is fixed."""
+
+    matrix, component_metrics, _ = component_predictions(
+        feature_tables,
+        train_end=VALIDATION_END,
+        evaluation_start=MARCH_START,
+        evaluation_end=MARCH_END,
+    )
+    ensemble = ensemble_probability(matrix)
+    reference = feature_tables[12.0]
+    train_mask = reference["game_date"] <= VALIDATION_END
+    march_mask = reference["game_date"].between(MARCH_START, MARCH_END)
+    outcomes = reference.loc[march_mask, "home_win"]
+
+    constant = np.full(
+        len(outcomes),
+        reference.loc[train_mask, "home_win"].mean(),
+    )
+    best_table = feature_tables[best_single["half_life"]]
+    best_model = make_model(best_single["C"])
+    best_model.fit(
+        best_table.loc[
+            best_table["game_date"] <= VALIDATION_END,
+            FEATURE_COLUMNS,
+        ],
+        best_table.loc[
+            best_table["game_date"] <= VALIDATION_END,
+            "home_win",
+        ],
+    )
+    best_probability = best_model.predict_proba(
+        best_table.loc[
+            best_table["game_date"].between(MARCH_START, MARCH_END),
+            FEATURE_COLUMNS,
+        ]
+    )[:, 1]
+
+    net_c = tune_reduced_baseline(reference, ["net_wins_diff"])
+    net_model = make_model(net_c)
+    net_model.fit(
+        reference.loc[train_mask, ["net_wins_diff"]],
+        reference.loc[train_mask, "home_win"],
+    )
+    net_probability = net_model.predict_proba(
+        reference.loc[march_mask, ["net_wins_diff"]]
+    )[:, 1]
+
+    margin_c = tune_reduced_baseline(reference, ["cumulative_margin_diff"])
+    margin_model = make_model(margin_c)
+    margin_model.fit(
+        reference.loc[train_mask, ["cumulative_margin_diff"]],
+        reference.loc[train_mask, "home_win"],
+    )
+    margin_probability = margin_model.predict_proba(
+        reference.loc[march_mask, ["cumulative_margin_diff"]]
+    )[:, 1]
+
+    comparison = pd.DataFrame(
+        [
+            {
+                "model": "constant_home_rate",
+                "split": "March governance check",
+                "n": len(outcomes),
+                **probability_metrics(outcomes, constant),
+            },
+            {
+                "model": "net_wins_only",
+                "split": "March governance check",
+                "n": len(outcomes),
+                **probability_metrics(outcomes, net_probability),
+            },
+            {
+                "model": "cumulative_margin_only",
+                "split": "March governance check",
+                "n": len(outcomes),
+                **probability_metrics(outcomes, margin_probability),
+            },
+            {
+                "model": "validation_best_single_component",
+                "split": "March governance check",
+                "n": len(outcomes),
+                **probability_metrics(outcomes, best_probability),
+            },
+            {
+                "model": "uniform_40_component_logistic_ensemble",
+                "split": "March governance check",
+                "n": len(outcomes),
+                **probability_metrics(outcomes, ensemble),
+            },
+        ]
+    )
+    return comparison, ensemble, component_metrics
+
+
+def final_component_summary(
+    models: list[Pipeline],
+    validation_grid: pd.DataFrame,
+    march_components: pd.DataFrame,
+) -> pd.DataFrame:
+    """Record every final component's fit and equal-strength home baseline."""
+
+    rows: list[dict[str, float]] = []
+    component_index = 0
+    for half_life in HALF_LIFE_GRID:
+        for c_value in C_GRID:
+            model = models[component_index]
+            coefficients = coefficient_table(model)
+            home_row = coefficients.loc[
+                coefficients["term"] == "equal_strength_home_advantage"
+            ].iloc[0]
+            feature_rows = coefficients.loc[
+                coefficients["term_type"] == "feature"
+            ].set_index("term")
+            validation_row = validation_grid.loc[
+                (validation_grid["half_life"] == half_life)
+                & np.isclose(validation_grid["C"], c_value)
+            ].iloc[0]
+            march_row = march_components.loc[
+                (march_components["half_life"] == half_life)
+                & np.isclose(march_components["C"], c_value)
+            ].iloc[0]
+            rows.append(
+                {
+                    "component": component_index + 1,
+                    "weight": 1.0 / (len(HALF_LIFE_GRID) * len(C_GRID)),
+                    "half_life": float(half_life),
+                    "C": float(c_value),
+                    "validation_log_loss": float(validation_row["log_loss"]),
+                    "march_log_loss": float(march_row["log_loss"]),
+                    "equal_strength_home_win_probability": float(
+                        home_row["reference_home_win_probability"]
+                    ),
+                    "net_wins_coefficient_per_sd": float(
+                        feature_rows.loc[
+                            "net_wins_diff",
+                            "coefficient_standardized",
+                        ]
+                    ),
+                    "cumulative_margin_coefficient_per_sd": float(
+                        feature_rows.loc[
+                            "cumulative_margin_diff",
+                            "coefficient_standardized",
+                        ]
+                    ),
+                    "recent_margin_coefficient_per_sd": float(
+                        feature_rows.loc[
+                            "recent_margin_evidence_diff",
+                            "coefficient_standardized",
+                        ]
+                    ),
+                }
+            )
+            component_index += 1
+    return pd.DataFrame(rows)
+
+
+def save_figures(
+    validation_comparison: pd.DataFrame,
+    march_metrics: pd.DataFrame,
+    calibration: pd.DataFrame,
+    component_summary: pd.DataFrame,
+    dispersion: pd.DataFrame,
+    figure_dir: Path,
+) -> None:
+    """Create concise interview-ready model diagnostics."""
+
+    figure_dir.mkdir(parents=True, exist_ok=True)
+
+    figure = plt.figure(figsize=(9, 5))
+    axis = figure.add_subplot(111)
+    comparison = validation_comparison.loc[
+        validation_comparison["model"] != "constant_home_rate"
+    ]
+    axis.bar(comparison["model"], comparison["log_loss"])
+    axis.set_ylabel("January-February log loss")
+    axis.tick_params(axis="x", rotation=18)
+    figure.tight_layout()
+    figure.savefig(figure_dir / "validation_model_comparison.png", dpi=180)
+    plt.close(figure)
+
+    figure = plt.figure(figsize=(9, 5))
+    axis = figure.add_subplot(111)
+    axis.bar(march_metrics["model"], march_metrics["log_loss"])
+    axis.set_ylabel("March log loss")
+    axis.tick_params(axis="x", rotation=20)
+    figure.tight_layout()
+    figure.savefig(figure_dir / "march_model_comparison.png", dpi=180)
+    plt.close(figure)
+
+    figure = plt.figure(figsize=(6, 6))
+    axis = figure.add_subplot(111)
+    axis.plot([0, 1], [0, 1], linestyle="--", label="perfect calibration")
+    axis.plot(
+        calibration["mean_probability"],
+        calibration["actual_home_win_rate"],
+        marker="o",
+        label="ensemble",
+    )
+    axis.set_xlabel("Mean predicted home-win probability")
+    axis.set_ylabel("Observed home-win rate")
+    axis.legend()
+    figure.tight_layout()
+    figure.savefig(figure_dir / "march_calibration.png", dpi=180)
+    plt.close(figure)
+
+    coefficient_columns = [
+        "net_wins_coefficient_per_sd",
+        "cumulative_margin_coefficient_per_sd",
+        "recent_margin_coefficient_per_sd",
+    ]
+    coefficient_means = component_summary[coefficient_columns].mean()
+    figure = plt.figure(figsize=(9, 5))
+    axis = figure.add_subplot(111)
+    axis.bar(coefficient_means.index, coefficient_means.values)
+    axis.set_ylabel("Mean standardized coefficient across components")
+    axis.tick_params(axis="x", rotation=20)
+    figure.tight_layout()
+    figure.savefig(figure_dir / "ensemble_mean_coefficients.png", dpi=180)
+    plt.close(figure)
+
+    figure = plt.figure(figsize=(9, 5))
+    axis = figure.add_subplot(111)
+    axis.hist(dispersion["component_standard_deviation"], bins=12)
+    axis.set_xlabel("Across-component probability standard deviation")
+    axis.set_ylabel("April games")
+    figure.tight_layout()
+    figure.savefig(figure_dir / "april_component_dispersion.png", dpi=180)
+    plt.close(figure)
+
+
+def run(data_path: Path, output_dir: Path) -> None:
+    """Execute the complete robust-ensemble workflow."""
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    figure_dir = output_dir.parent / "figures"
+    figure_dir.mkdir(parents=True, exist_ok=True)
+
+    data = load_and_validate(data_path)
+    source_bytes = data_path.read_bytes()
+    data_fingerprint = {
+        "source_file_name": data_path.name,
+        "sha256": hashlib.sha256(source_bytes).hexdigest(),
+        "bytes": len(source_bytes),
+        "rows": len(data),
+        "minimum_game_date": str(data["game_date"].min().date()),
+        "maximum_game_date": str(data["game_date"].max().date()),
+    }
+    with (output_dir / "data_fingerprint.json").open(
+        "w",
+        encoding="utf-8",
+    ) as file:
+        json.dump(data_fingerprint, file, indent=2)
+    feature_tables = build_component_feature_tables(data)
+
+    validation_grid, validation_comparison, _, best_single = validation_audit(
+        feature_tables,
+    )
+    march_metrics, march_probability, march_components = march_governance_check(
+        feature_tables,
+        best_single,
+    )
+    reference = feature_tables[12.0]
+    march_mask = reference["game_date"].between(MARCH_START, MARCH_END)
+    march_calibration = calibration_bins(
+        reference.loc[march_mask, "home_win"],
+        march_probability,
+    )
+
+    frozen_tables = {
+        half_life: build_frozen_features(data, half_life, MARCH_END)
+        for half_life in HALF_LIFE_GRID
+    }
+    frozen_matrix, _, final_models = component_predictions(
+        feature_tables,
+        train_end=MARCH_END,
+        evaluation_start=APRIL_START,
+        evaluation_end=data["game_date"].max(),
+        frozen_tables=frozen_tables,
+        return_models=True,
+    )
+    rolling_matrix, _, _ = component_predictions(
+        feature_tables,
+        train_end=MARCH_END,
+        evaluation_start=APRIL_START,
+        evaluation_end=data["game_date"].max(),
+    )
+    frozen_probability = ensemble_probability(frozen_matrix)
+    rolling_probability = ensemble_probability(rolling_matrix)
+
+    frozen_reference = frozen_tables[12.0].loc[
+        frozen_tables[12.0]["game_date"] >= APRIL_START
+    ].reset_index(drop=True)
+    sequential_reference = reference.loc[
+        reference["game_date"] >= APRIL_START
+    ].reset_index(drop=True)
+    if frozen_reference["game_id"].tolist() != sequential_reference["game_id"].tolist():
+        raise ValueError("Frozen and rolling April rows are not aligned.")
+
+    predictions = frozen_reference[
+        ["game_id", "game_date", "away", "home"]
+    ].copy()
+    submitted_probability = np.round(frozen_probability, 10)
+    predictions["home_win_probability"] = submitted_probability
+    predictions["fair_home_decimal_odds"] = 1.0 / submitted_probability
+    predictions["fair_away_decimal_odds"] = 1.0 / (
+        1.0 - submitted_probability
+    )
+
+    best_single_index = (
+        list(HALF_LIFE_GRID).index(best_single["half_life"]) * len(C_GRID)
+        + list(C_GRID).index(best_single["C"])
+    )
+    single_probability = np.round(
+        frozen_matrix[:, best_single_index],
+        10,
+    )
+    single_predictions = predictions[
+        ["game_id", "game_date", "away", "home"]
+    ].copy()
+    single_predictions["home_win_probability"] = single_probability
+    single_predictions["fair_home_decimal_odds"] = (
+        1.0 / single_probability
+    )
+    single_predictions["fair_away_decimal_odds"] = (
+        1.0 / (1.0 - single_probability)
+    )
+
+    repricing = predictions[
+        ["game_id", "game_date", "away", "home"]
+    ].copy()
+    repricing["frozen_march_31_probability"] = submitted_probability
+    repricing["rolling_as_of_game_probability"] = rolling_probability
+    repricing["absolute_probability_change"] = np.abs(
+        rolling_probability - frozen_probability
+    )
+
+    dispersion = predictions[
+        ["game_id", "game_date", "away", "home", "home_win_probability"]
+    ].copy()
+    dispersion["component_standard_deviation"] = frozen_matrix.std(axis=1)
+    dispersion["component_minimum"] = frozen_matrix.min(axis=1)
+    dispersion["component_5_percent"] = np.quantile(
+        frozen_matrix,
+        0.05,
+        axis=1,
+    )
+    dispersion["component_median"] = np.quantile(
+        frozen_matrix,
+        0.50,
+        axis=1,
+    )
+    dispersion["component_95_percent"] = np.quantile(
+        frozen_matrix,
+        0.95,
+        axis=1,
+    )
+    dispersion["component_maximum"] = frozen_matrix.max(axis=1)
+
+    component_summary = final_component_summary(
+        final_models,
+        validation_grid,
+        march_components,
+    )
+    ensemble_home_probability = float(
+        component_summary["equal_strength_home_win_probability"].mean()
+    )
+    april_metrics = pd.DataFrame(
+        [
+            {
+                "model": "uniform_40_component_logistic_ensemble",
+                "split": "April post-lock descriptive audit",
+                "n": len(frozen_reference),
+                **probability_metrics(
+                    frozen_reference["home_win"],
+                    submitted_probability,
+                ),
+            }
+        ]
+    )
+
+    single_april_metrics = pd.DataFrame(
+        [
+            {
+                "model": "validation_best_single_component",
+                "split": "April post-lock descriptive benchmark",
+                "n": len(frozen_reference),
+                **probability_metrics(
+                    frozen_reference["home_win"],
+                    single_probability,
+                ),
+            }
+        ]
+    )
+
+    validation_grid.to_csv(
+        output_dir / "validation_grid.csv",
+        index=False,
+    )
+    validation_comparison.to_csv(
+        output_dir / "ensemble_validation_metrics.csv",
+        index=False,
+    )
+    march_metrics.to_csv(
+        output_dir / "march_temporal_check_metrics.csv",
+        index=False,
+    )
+    march_calibration.to_csv(
+        output_dir / "march_calibration_bins.csv",
+        index=False,
+    )
+    component_summary.to_csv(
+        output_dir / "ensemble_component_summary.csv",
+        index=False,
+    )
+    predictions.to_csv(
+        output_dir / "april_predictions.csv",
+        index=False,
+        float_format="%.10f",
+    )
+    single_predictions.to_csv(
+        output_dir / "single_model_benchmark_april_predictions.csv",
+        index=False,
+        float_format="%.10f",
+    )
+    repricing.to_csv(
+        output_dir / "april_repricing_backtest.csv",
+        index=False,
+        float_format="%.10f",
+    )
+    dispersion.to_csv(
+        output_dir / "april_component_dispersion.csv",
+        index=False,
+        float_format="%.10f",
+    )
+    april_metrics.to_csv(
+        output_dir / "april_descriptive_metrics.csv",
+        index=False,
+    )
+    single_april_metrics.to_csv(
+        output_dir / "single_model_benchmark_april_metrics.csv",
+        index=False,
+    )
+
+    selected_model = {
+        "model": "uniform_40_component_logistic_ensemble",
+        "features": FEATURE_COLUMNS,
+        "half_lives": list(HALF_LIFE_GRID),
+        "C_values": list(C_GRID),
+        "component_count": len(HALF_LIFE_GRID) * len(C_GRID),
+        "component_weight": 1.0 / (
+            len(HALF_LIFE_GRID) * len(C_GRID)
+        ),
+        "aggregation": "arithmetic mean of component probabilities",
+        "weights_tuned": False,
+        "validation_best_single_component": best_single,
+        "april_outcomes_used_for_component_or_weight_tuning": False,
+        "april_outcomes_viewed_descriptively": True,
+        "march_role": (
+            "Later governance check used to confirm that the ensemble "
+            "validation advantage did not reverse before April."
+        ),
+        "selection_basis": (
+            "The fixed equal-weight ensemble improved January-February "
+            "validation log loss before April and was retained after the "
+            "March governance check."
+        ),
+    }
+    with (output_dir / "selected_model.json").open(
+        "w",
+        encoding="utf-8",
+    ) as file:
+        json.dump(selected_model, file, indent=2)
+
+    summary = {
+        "data_fingerprint": data_fingerprint,
+        "selected_model": selected_model,
+        "equal_strength_home_win_probability": ensemble_home_probability,
+        "validation": validation_comparison.to_dict(orient="records"),
+        "march_governance_check": march_metrics.to_dict(orient="records"),
+        "april_prediction_count": len(predictions),
+    }
+    with (output_dir / "model_summary.json").open(
+        "w",
+        encoding="utf-8",
+    ) as file:
+        json.dump(summary, file, indent=2)
+
+    save_figures(
+        validation_comparison,
+        march_metrics,
+        march_calibration,
+        component_summary,
+        dispersion,
+        figure_dir,
+    )
+
+    print(json.dumps(summary, indent=2, default=str))
 
 
 def parse_args() -> argparse.Namespace:  # Defines an interview-friendly command-line interface.

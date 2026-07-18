@@ -11,6 +11,7 @@ KEY_NAVIGATION_FILES = {
     "README.md",
     "SUMMARY.md",
     "docs/REVIEWER_GUIDE.md",
+    "docs/ENSEMBLE_METHOD.md",
     "docs/MODEL_EVOLUTION.md",
     "docs/MODEL_CARD.md",
     "docs/LIMITATIONS_AND_ROADMAP.md",

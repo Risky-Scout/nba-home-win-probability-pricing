@@ -1,18 +1,141 @@
 {
-  "selected_parameters": {
-    "half_life": 12.0,
-    "C": 0.0075,
+  "data_fingerprint": {
+    "source_file_name": "nba-win-probability-data.csv",
+    "sha256": "fc4d66b4a7d08cf975fe7b82f22e95cce37b84976536e627621d5238481638c3",
+    "bytes": 83198,
+    "rows": 1230,
+    "minimum_game_date": "2025-10-21",
+    "maximum_game_date": "2026-04-12"
+  },
+  "selected_model": {
+    "model": "uniform_40_component_logistic_ensemble",
     "features": [
       "net_wins_diff",
       "cumulative_margin_diff",
       "recent_margin_evidence_diff"
-    ]
+    ],
+    "half_lives": [
+      5.0,
+      8.0,
+      12.0,
+      16.0,
+      24.0
+    ],
+    "C_values": [
+      0.003,
+      0.005,
+      0.0075,
+      0.01,
+      0.015,
+      0.02,
+      0.03,
+      0.05
+    ],
+    "component_count": 40,
+    "component_weight": 0.025,
+    "aggregation": "arithmetic mean of component probabilities",
+    "weights_tuned": false,
+    "validation_best_single_component": {
+      "half_life": 12.0,
+      "C": 0.0075
+    },
+    "april_outcomes_used_for_component_or_weight_tuning": false,
+    "april_outcomes_viewed_descriptively": true,
+    "march_role": "Later governance check used to confirm that the ensemble validation advantage did not reverse before April.",
+    "selection_basis": "The fixed equal-weight ensemble improved January-February validation log loss before April and was retained after the March governance check."
   },
-  "home_advantage": {
-    "standardized_intercept_log_odds": 0.22874544796965765,
-    "standardized_intercept_probability": 0.5569383059641753,
-    "equal_strength_home_log_odds": 0.22150080154746737,
-    "equal_strength_home_win_probability": 0.5551499013988546,
-    "equal_strength_home_odds_multiplier": 1.247948248510122
-  }
+  "equal_strength_home_win_probability": 0.5556753211761606,
+  "validation": [
+    {
+      "model": "constant_home_rate",
+      "split": "January-February validation",
+      "n": 399,
+      "log_loss": 0.693944493774165,
+      "brier_score": 0.2503929793102683,
+      "roc_auc": 0.5,
+      "accuracy_0_5": 0.5213032581453634,
+      "mean_probability": 0.5504032258064516,
+      "actual_home_win_rate": 0.5213032581453634
+    },
+    {
+      "model": "validation_best_single_component",
+      "split": "January-February validation",
+      "n": 399,
+      "log_loss": 0.6275285563144087,
+      "brier_score": 0.21748082407340277,
+      "roc_auc": 0.7109846959323398,
+      "accuracy_0_5": 0.6541353383458647,
+      "mean_probability": 0.5471947483912913,
+      "actual_home_win_rate": 0.5213032581453634
+    },
+    {
+      "model": "uniform_40_component_logistic_ensemble",
+      "split": "January-February validation",
+      "n": 399,
+      "log_loss": 0.6272594857985543,
+      "brier_score": 0.21714956026409996,
+      "roc_auc": 0.7113119210632299,
+      "accuracy_0_5": 0.6641604010025063,
+      "mean_probability": 0.5458959345344544,
+      "actual_home_win_rate": 0.5213032581453634
+    }
+  ],
+  "march_governance_check": [
+    {
+      "model": "constant_home_rate",
+      "split": "March governance check",
+      "n": 239,
+      "log_loss": 0.6805803943893557,
+      "brier_score": 0.24372705003095535,
+      "roc_auc": 0.5,
+      "accuracy_0_5": 0.602510460251046,
+      "mean_probability": 0.5374301675977653,
+      "actual_home_win_rate": 0.602510460251046
+    },
+    {
+      "model": "net_wins_only",
+      "split": "March governance check",
+      "n": 239,
+      "log_loss": 0.5209329471264292,
+      "brier_score": 0.17127373310629654,
+      "roc_auc": 0.8236842105263157,
+      "accuracy_0_5": 0.7405857740585774,
+      "mean_probability": 0.5432419775312014,
+      "actual_home_win_rate": 0.602510460251046
+    },
+    {
+      "model": "cumulative_margin_only",
+      "split": "March governance check",
+      "n": 239,
+      "log_loss": 0.5227798518657912,
+      "brier_score": 0.17285212704610547,
+      "roc_auc": 0.8161184210526315,
+      "accuracy_0_5": 0.7573221757322176,
+      "mean_probability": 0.5461684846282614,
+      "actual_home_win_rate": 0.602510460251046
+    },
+    {
+      "model": "validation_best_single_component",
+      "split": "March governance check",
+      "n": 239,
+      "log_loss": 0.5096452887112716,
+      "brier_score": 0.16761849059271816,
+      "roc_auc": 0.8235380116959065,
+      "accuracy_0_5": 0.7573221757322176,
+      "mean_probability": 0.5474258207319714,
+      "actual_home_win_rate": 0.602510460251046
+    },
+    {
+      "model": "uniform_40_component_logistic_ensemble",
+      "split": "March governance check",
+      "n": 239,
+      "log_loss": 0.508637655251053,
+      "brier_score": 0.1674158453047922,
+      "roc_auc": 0.823391812865497,
+      "accuracy_0_5": 0.7573221757322176,
+      "mean_probability": 0.5478081049595851,
+      "actual_home_win_rate": 0.602510460251046
+    }
+  ],
+  "april_prediction_count": 96
 }

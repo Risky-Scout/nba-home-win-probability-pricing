@@ -1,0 +1,8 @@
+{
+  "source_file_name": "nba-win-probability-data.csv",
+  "sha256": "fc4d66b4a7d08cf975fe7b82f22e95cce37b84976536e627621d5238481638c3",
+  "bytes": 83198,
+  "rows": 1230,
+  "minimum_game_date": "2025-10-21",
+  "maximum_game_date": "2026-04-12"
+}

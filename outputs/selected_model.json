@@ -1,0 +1,37 @@
+{
+  "model": "uniform_40_component_logistic_ensemble",
+  "features": [
+    "net_wins_diff",
+    "cumulative_margin_diff",
+    "recent_margin_evidence_diff"
+  ],
+  "half_lives": [
+    5.0,
+    8.0,
+    12.0,
+    16.0,
+    24.0
+  ],
+  "C_values": [
+    0.003,
+    0.005,
+    0.0075,
+    0.01,
+    0.015,
+    0.02,
+    0.03,
+    0.05
+  ],
+  "component_count": 40,
+  "component_weight": 0.025,
+  "aggregation": "arithmetic mean of component probabilities",
+  "weights_tuned": false,
+  "validation_best_single_component": {
+    "half_life": 12.0,
+    "C": 0.0075
+  },
+  "april_outcomes_used_for_component_or_weight_tuning": false,
+  "april_outcomes_viewed_descriptively": true,
+  "march_role": "Later governance check used to confirm that the ensemble validation advantage did not reverse before April.",
+  "selection_basis": "The fixed equal-weight ensemble improved January-February validation log loss before April and was retained after the March governance check."
+}

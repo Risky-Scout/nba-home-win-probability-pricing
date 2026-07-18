@@ -1,0 +1,18 @@
+{
+  "selected_model": "uniform_40_component_logistic_ensemble",
+  "selection_basis": "Fixed equal-weight probability averaging across the complete predeclared half-life and L2 grid.",
+  "validation_log_loss": 0.6272594857985543,
+  "march_governance_check_log_loss": 0.508637655251053,
+  "validation_best_single_component": {
+    "half_life": 12.0,
+    "C": 0.0075,
+    "validation_log_loss": 0.6275285563144087,
+    "march_log_loss": 0.5096452887112716
+  },
+  "ensemble_weights_tuned": false,
+  "march_used_for_promotion_governance": true,
+  "march_used_for_component_or_weight_tuning": false,
+  "april_outcomes_used_for_component_or_weight_tuning": false,
+  "april_outcomes_viewed_descriptively": true,
+  "decision": "Promote the ensemble for the April target because it improves January-February validation log loss before April, preserves the direction in the March governance period, reduces single-grid-point selection risk, and retains the same interpretable feature family at negligible runtime cost."
+}

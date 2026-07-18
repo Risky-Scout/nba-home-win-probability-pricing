@@ -1,140 +1,107 @@
 # Reviewer Guide
 
-This page provides the shortest defensible route through the repository.
+## Two-minute route
 
-## Ten-minute review
+1. Read [`SUMMARY.md`](../SUMMARY.md).
+2. Open [`outputs/april_predictions.csv`](../outputs/april_predictions.csv).
+3. Confirm the official model in [`outputs/selected_model.json`](../outputs/selected_model.json).
 
-### 1. Confirm the output
+## Ten-minute route
 
-Open:
+### 1. Business target
 
-- [`outputs/april_predictions.csv`](../outputs/april_predictions.csv)
+The model prices the probability that the listed home team wins each April
+game from a March 31 information snapshot.
 
-Check:
+### 2. Leakage control
 
-- 96 April rows.
-- Ten-character `game_id` values.
-- `home_win_probability`.
-- Zero-margin home and away decimal odds.
-- A separate daily-repricing sensitivity column.
-
-### 2. Understand the information timestamp
-
-Open [`nba_win_probability.py`](../nba_win_probability.py) and search for:
+Open [`nba_win_probability.py`](../nba_win_probability.py) and search:
 
 ```text
 build_sequential_features
 ```
 
-The sequence is:
+Features are captured before the current result updates team state.
 
-1. Read the teams' states before the game.
-2. Construct and store the feature row.
-3. Observe the result.
-4. Update both teams for later games.
+### 3. Sports features
 
-This prevents current-game points, turnovers, fouls, and rebounds from
-predicting their own outcome.
-
-### 3. Inspect the three signals
-
-Search for:
+Search:
 
 ```text
 feature_values
 ```
 
-The model uses:
+Every component uses the same three home-minus-away signals.
 
-- `net_wins_diff`
-- `cumulative_margin_diff`
-- `recent_margin_evidence_diff`
+### 4. Ensemble construction
 
-All are home minus away.
-
-### 4. Inspect the probability model
-
-Search for:
+Search:
 
 ```text
-make_model
+component_predictions
+ensemble_probability
 ```
 
-The pipeline is:
+The official price is the arithmetic mean of 40 fixed component probabilities.
 
-- `StandardScaler`
-- L2-regularized `LogisticRegression`
-
-Selected `C = 0.0075`.
-
-### 5. Inspect chronological selection
-
-Search for:
-
-```text
-tune_model
-```
-
-The development design is:
-
-- October-December training.
-- January-February validation.
-- March governance.
-- Final refit through March.
-- Frozen April forecast.
-
-### 6. Review proper-score evidence
+### 5. Promotion evidence
 
 Open:
 
+- [`outputs/ensemble_validation_metrics.csv`](../outputs/ensemble_validation_metrics.csv)
 - [`outputs/march_temporal_check_metrics.csv`](../outputs/march_temporal_check_metrics.csv)
-- [`outputs/enhanced_model_comparison.csv`](../outputs/enhanced_model_comparison.csv)
-- [`outputs/challenger_benchmark.csv`](../outputs/challenger_benchmark.csv)
-- [`outputs/calibration_benchmark.csv`](../outputs/calibration_benchmark.csv)
+- [`outputs/governance_monthly_backtest.csv`](../outputs/governance_monthly_backtest.csv)
 
-The selected March log loss is **0.509645**.
+The ensemble improves January-February validation and March governance log
+loss before the April audit.
 
-### 7. Review the decision logic
+### 6. Interpretability
+
+Open:
+
+- [`outputs/ensemble_component_summary.csv`](../outputs/ensemble_component_summary.csv)
+- [`outputs/single_model_benchmark_april_predictions.csv`](../outputs/single_model_benchmark_april_predictions.csv)
+- [Ensemble Method](ENSEMBLE_METHOD.md)
+
+### 7. Limitations and production translation
 
 Read:
 
-- [Model Evolution](MODEL_EVOLUTION.md)
 - [Model Card](MODEL_CARD.md)
 - [Limitations and Roadmap](LIMITATIONS_AND_ROADMAP.md)
 
-The deployment rule is:
-
-> Added complexity must improve forward proper scores materially and stably
-> while preserving the pregame information timestamp, reproducibility, and
-> interpretability.
-
-## Thirty-minute technical review
+## Thirty-minute technical route
 
 1. Run `bash scripts/run_quality_checks.sh`.
 2. Run the official model using the supplied CSV.
-3. Inspect `outputs/april_predictions.csv`.
-4. Walk through `build_sequential_features`.
-5. Walk through `tune_model`.
-6. Compare champion and challenger artifacts.
-7. Inspect calibration and uncertainty.
-8. Review limitations and production extensions.
+3. Inspect the strict April output.
+4. Walk through sequential state construction.
+5. Walk through component fitting and probability averaging.
+6. Compare ensemble and single benchmark.
+7. Review rich challengers and bootstrap uncertainty.
+8. Discuss late-season target relevance and production extensions.
 
-## What is official versus research
+## Official versus benchmark versus research
 
-### Official price
+### Official
 
 - `nba_win_probability.py`
+- Uniform 40-component ensemble
 - `outputs/april_predictions.csv`
-- Three-signal L2 logistic model
 
-### Governance analysis
+### Benchmark
 
-- `enhanced_governance.py`
-- `challenger_analysis.py`
-- `ablation_and_timing.py`
+- Best validation single component
+- Half-life 12, `C = 0.0075`
+- Separate April benchmark artifacts
 
-### Shadow research
+### Governance
 
-- `research/team_specific_home_effects.py`
+- `model_governance.py`
+- Rich box-score, schedule, Bradley-Terry, Elo, bootstrap, and monthly analysis
 
-Research artifacts do not silently replace the official price.
+### Research
+
+- Historical single-model governance
+- Team-specific home effects
+- Optional ML challengers

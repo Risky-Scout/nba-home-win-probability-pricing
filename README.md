@@ -2,8 +2,8 @@
 
 [![CI](https://github.com/Risky-Scout/nba-home-win-probability-pricing/actions/workflows/tests.yml/badge.svg)](https://github.com/Risky-Scout/nba-home-win-probability-pricing/actions/workflows/tests.yml)
 
-A leakage-safe, chronologically validated probability-pricing model for the
-bet365 NBA technical task.
+A leakage-safe, chronologically validated late-season probability-pricing
+model for the bet365 NBA technical task.
 
 ## Start here
 
@@ -11,129 +11,134 @@ bet365 NBA technical task.
 |---|---|
 | 2 minutes | Read [SUMMARY.md](SUMMARY.md) and open [April predictions](outputs/april_predictions.csv) |
 | 10 minutes | Follow the [Reviewer Guide](docs/REVIEWER_GUIDE.md) |
-| 20 minutes | Read the [Model Story](docs/MODEL_EVOLUTION.md) and inspect [the champion code](nba_win_probability.py) |
+| 20 minutes | Read [Ensemble Method](docs/ENSEMBLE_METHOD.md) and inspect [the official model](nba_win_probability.py) |
+| Full audit | Read [Model Evolution](docs/MODEL_EVOLUTION.md), [Model Card](docs/MODEL_CARD.md), and [Limitations](docs/LIMITATIONS_AND_ROADMAP.md) |
 | Reproduce | Follow [Reproducibility](docs/REPRODUCIBILITY.md) |
-| Audit | Review the [Model Card](docs/MODEL_CARD.md), [limitations](docs/LIMITATIONS_AND_ROADMAP.md), and [artifact manifest](docs/ARTIFACT_MANIFEST.md) |
 
 ## Business objective
 
-Estimate the probability that the team listed as `home` wins each April game,
+Estimate the probability that the team listed as `home` wins each April game
 using only information available through March.
 
-The official submission is:
+The official answer is:
 
 - [`outputs/april_predictions.csv`](outputs/april_predictions.csv)
 - Column: `home_win_probability`
 
 All 96 official April prices are frozen at the March 31 information cutoff.
 
-## Selected model
+## Official model
 
-The champion is a strongly regularized logistic paired-comparison model with
-three home-minus-away signals:
+The final model is a **uniform 40-component ensemble of strongly regularized
+logistic paired-comparison models**.
+
+Every component uses the same three interpretable home-minus-away signals:
 
 1. Net-wins differential.
 2. Cumulative point-margin differential.
 3. Evidence-weighted recent point-margin differential.
 
-Selected hyperparameters:
+The components differ only in:
 
-- Recent-form half-life: **12 games**
-- Logistic regularization: **`C = 0.0075`**
+- EWMA half-life: 5, 8, 12, 16, or 24 games.
+- Logistic `C`: 0.003, 0.005, 0.0075, 0.01, 0.015, 0.02, 0.03, or 0.05.
 
-The probability model is:
+The official price is:
 
 \[
-P(\text{home win})
-=
-\sigma\left(
-\beta_0 + \beta_1 z_1 + \beta_2 z_2 + \beta_3 z_3
-\right)
+P_{ensemble} =
+\frac{1}{40}
+\sum_{k=1}^{40} P_k
 \]
 
-where each \(z_j\) is standardized using training-only statistics.
+Equal weights are fixed. They are not fitted to April outcomes.
 
-## Why this is not “just basic logistic regression”
+## Why ensemble averaging
 
-The statistical link is logistic, but the model is built around:
+The validation surface is flat: several half-life and regularization choices
+perform almost identically. Selecting one grid minimum creates avoidable
+hyperparameter-selection risk.
 
-- Sequential, pregame-only team states.
-- Explicit feature-before-update ordering.
-- Evidence-weighted dynamic form.
-- Strong L2 shrinkage for correlated signals.
-- Chronological hyperparameter selection.
-- Proper probability scoring.
-- Frozen April information timing.
-- Extensive champion-challenger governance.
+Averaging across the complete predeclared grid:
 
-The feature engineering and information timestamp do most of the work. The
-logistic layer converts those signals into a stable, auditable probability.
+- Preserves the same interpretable feature family.
+- Reduces dependence on one narrowly selected grid point.
+- Improves January-February validation log loss.
+- Preserves the direction in March governance.
+- Adds negligible computational cost.
 
-## Development design
+The best single model remains the coefficient-level benchmark.
 
-| Period | Role |
-|---|---|
-| October-December | Fit coefficients |
-| January-February | Select half-life, regularization, and architecture |
-| March | Later governance and robustness check |
-| October-March | Final refit |
-| April | Requested forecast period |
+## Pre-April selection evidence
 
-March is not described as a pristine untouched test because it informed later
-governance decisions.
+| Model | Jan-Feb validation log loss | March governance log loss |
+|---|---:|---:|
+| Best single component | 0.627529 | 0.509645 |
+| **Uniform 40-component ensemble** | **0.627259** | **0.508638** |
 
-## March governance result
+March was used as a governance check, not to tune component weights.
+
+## April descriptive audit
+
+April outcomes were not used to select component weights or aggregation.
 
 | Model | Log loss | Brier | AUC | Accuracy |
 |---|---:|---:|---:|---:|
-| Constant home-rate baseline | 0.680580 | 0.243727 | 0.500000 | 60.251% |
-| Net-wins-only logistic | 0.520933 | 0.171274 | 0.823684 | 74.059% |
-| Cumulative-margin-only logistic | 0.522780 | 0.172852 | 0.816118 | 75.732% |
-| **Three-signal champion** | **0.509645** | **0.167618** | **0.823538** | **75.732%** |
+| Best single benchmark | 0.468596 | 0.150628 | **0.868196** | **81.250%** |
+| **Official ensemble** | **0.467607** | **0.150287** | 0.865497 | 80.208% |
 
-The primary metric is forward log loss because the business output is a
-probability price, not merely a winner classification.
+April is reported descriptively. The promotion case rests on pre-April
+validation and March governance.
 
-## Home-court interpretation
+## Information timing
 
-The official probability is already specific to the actual home and away
-teams in each matchup.
+The current game's points, turnovers, fouls, and rebounds are postgame
+information. They cannot predict the same game.
 
-For otherwise equal raw team-strength features:
+Each game is processed in this order:
 
-- Home log odds: **0.221501**
-- Home-win probability: **55.515%**
-- Home odds multiplier: **1.2479x**
+1. Read both teams' pregame states.
+2. Construct and store the feature row.
+3. Observe the result.
+4. Update both teams for later games.
 
-A separate shrunk team-specific venue challenger is retained under
-[`research/`](research/) because its small improvement was not statistically
-or temporally stable enough to replace the champion.
+For the official April file, every team state is frozen on March 31.
 
-## Why added complexity was rejected
+## Interpretability
 
-The champion was compared with:
+The ensemble does not introduce new black-box features. Every component uses
+the same three sports signals and the same logistic probability link.
 
-- XGBoost and residual XGBoost.
-- CatBoost, random forest, and ExtraTrees.
-- Convex probability ensembles.
-- Platt, beta, and isotonic calibration.
-- Opponent-adjusted ridge team ratings.
-- Pure and Bayesian-shrunken EWMA variants.
-- PCA latent-strength models.
-- Every two-feature subset.
-- Team-specific venue deviations.
-- Rich lagged box-score and schedule features.
+For an equal-strength matchup, the average home-win baseline is approximately
+**55.568%**.
 
-Some challengers improved isolated periods or secondary metrics, but no model
-produced a material, temporally stable improvement in proper probability
-scores.
+Interpretation artifacts:
 
-See [Model Evolution](docs/MODEL_EVOLUTION.md) and
-[Reviewer Guide](docs/REVIEWER_GUIDE.md).
+- [`outputs/ensemble_component_summary.csv`](outputs/ensemble_component_summary.csv)
+- [`outputs/april_component_dispersion.csv`](outputs/april_component_dispersion.csv)
+- [`outputs/single_model_benchmark_april_predictions.csv`](outputs/single_model_benchmark_april_predictions.csv)
+
+## Repository map
+
+```text
+.
+├── README.md
+├── SUMMARY.md
+├── nba_win_probability.py        # Official ensemble and benchmark
+├── model_governance.py           # Promotion evidence and rich challengers
+├── challenger_analysis.py        # Optional ML challengers
+├── ablation_and_timing.py        # Feature subsets and timing
+├── outputs/                      # Official prices and governance artifacts
+├── figures/                      # Reviewer-facing diagnostics
+├── docs/                         # Model, governance, and reproduction docs
+├── research/                     # Non-promoted historical challengers
+├── scripts/                      # Setup, privacy, and integrity utilities
+└── tests/                        # Leakage, runtime, artifact, and docs tests
+```
 
 ## Run locally
 
-Supported Python: **3.11-3.13**. Python 3.12.13 is recommended.
+Supported Python: 3.11-3.13. Python 3.12 is recommended.
 
 ```bash
 bash scripts/bootstrap_macos.sh
@@ -147,7 +152,7 @@ python nba_win_probability.py \
   --output-dir outputs
 ```
 
-Run the complete core workflow:
+Run the core submission workflow:
 
 ```bash
 python run_submission.py \
@@ -161,30 +166,11 @@ Run the data-free quality gate:
 bash scripts/run_quality_checks.sh
 ```
 
-## Repository map
+## Limitations
 
-```text
-.
-├── README.md                     # Main landing page
-├── SUMMARY.md                    # Brief recruiter summary
-├── nba_win_probability.py        # Official champion and April prices
-├── enhanced_governance.py        # SRS, shrinkage, PCA, uncertainty
-├── challenger_analysis.py        # Tree models, ensembles, calibration, SHAP
-├── ablation_and_timing.py        # Feature subsets and timing
-├── outputs/                      # Official predictions and audit artifacts
-├── figures/                      # Core diagnostics
-├── research/                     # Non-promoted research challengers
-├── docs/                         # Reviewer and model-governance documentation
-├── scripts/                      # Setup, privacy, and integrity utilities
-└── tests/                        # Leakage, runtime, configuration, and artifact tests
-```
+This remains a one-season, team-level technical-task model. A production NBA
+price should add injuries, expected lineups, player minutes, possession-based
+strength, travel context, market information, overround, liability, and
+multiple seasons.
 
-## Important limitations
-
-This is a strong technical-task model, not a complete production NBA pricing
-system. The supplied data contains one season and lacks injuries, expected
-lineups, player minutes, possession-based ratings, travel context, and market
-prices.
-
-Those limitations are documented in
-[`docs/LIMITATIONS_AND_ROADMAP.md`](docs/LIMITATIONS_AND_ROADMAP.md).
+See [`docs/LIMITATIONS_AND_ROADMAP.md`](docs/LIMITATIONS_AND_ROADMAP.md).

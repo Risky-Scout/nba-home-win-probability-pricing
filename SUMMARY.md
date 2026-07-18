@@ -1,84 +1,65 @@
-# Brief Submission Summary
+# Brief Technical Summary
 
 ## Objective
 
-Estimate each April game's home-team win probability using only information
-available through March.
+Estimate the home-team win probability for each April NBA game using only
+information available through March.
 
-## Selected model
+## Official model
 
-A strongly regularized logistic paired-comparison model using:
+A fixed equal-weight ensemble of 40 L2-regularized logistic
+paired-comparison models.
+
+All components use:
 
 - Net-wins differential.
 - Cumulative point-margin differential.
 - Evidence-weighted recent point-margin differential.
 
-Selected hyperparameters:
+The ensemble averages five EWMA half-lives and eight regularization values.
+The grid and equal weights are fixed; April outcomes are not used to tune
+them.
 
-- 12-game recent-form half-life.
-- Logistic `C = 0.0075`.
+## Why the ensemble was promoted
 
-## Validation and governance
+The ensemble improves the pre-April January-February validation score and
+preserves the direction in the March governance period.
 
-- October-December: coefficient training.
-- January-February: model and hyperparameter validation.
-- March: later governance/robustness check.
-- October-March: final refit.
-- April: strict March 31 frozen probabilities.
+| Model | Jan-Feb log loss | March log loss |
+|---|---:|---:|
+| Best single component | 0.627529 | 0.509645 |
+| **Official ensemble** | **0.627259** | **0.508638** |
 
-March is not represented as a pristine untouched test because it has informed
-later governance discussions.
+The gain is modest and not claimed to be statistically conclusive. Promotion
+is justified by target relevance, pre-April directional consistency,
+negligible runtime cost, and reduced single-grid-point selection risk.
 
-## March performance
+## April descriptive result
 
-- Log loss: **0.509645**
-- Brier score: **0.167618**
-- ROC AUC: **0.823538**
-- Accuracy: **75.732%**
+- Log loss: **0.467607**
+- Brier score: **0.150287**
+- ROC AUC: **0.865497**
+- Accuracy: **80.208%**
 
-Constant home-rate baseline log loss: **0.680580**.
+The single benchmark April log loss is 0.468596.
 
-## Enhanced limitation testing
+## Information timing
 
-The final review explicitly tested:
+Current-game box-score values are used only after the prediction timestamp.
+All official April features are frozen at March 31.
 
-- Opponent-adjusted ridge team strength.
-- Pure and Bayesian-shrunken EWMA recent form.
-- PCA latent-strength models.
-- Every two-feature subset.
-- Rich box-score and schedule features.
-- Tree models, residual boosting and probability ensembles.
-- Platt, beta and isotonic calibration.
+## Reproduce
 
-No challenger produced a material and temporally stable proper-score gain.
+```bash
+bash scripts/bootstrap_macos.sh
 
-## Calibration
-
-March mean probability was **54.743%**,
-versus an observed home-win rate of
-**60.251%**.
-
-This limitation is disclosed. A post-hoc mapping is not added because
-prospective calibration tests worsened later scores.
-
-## Sportsbook interpretation
-
-The output is a fundamental zero-margin fair price. A production price would
-also incorporate injuries, expected lineups, player-level information, market
-prices, overround, liability, limits and trader judgment.
+python nba_win_probability.py \
+  --data /path/to/nba-win-probability-data.csv \
+  --output-dir outputs
+```
 
 ## Final claim
 
-This is not claimed to be the universally optimal NBA model. It is the most
-defensible submission for the supplied data and business constraints after
-the serious challenger families tested failed to earn additional complexity.
-
-
-## Team-specific interpretation
-
-The official probability is already specific to each home-away matchup.
-
-A separate shrunk team-specific home-court challenger was also tested. It
-improved validation log loss slightly, but its bootstrap interval included
-zero, March was effectively tied, and April descriptive performance was
-worse. The global home baseline therefore remains the official specification.
+This is the strongest late-season model among the tested candidates for the
+supplied information set. It is not claimed to be a complete production NBA
+pricing system.

@@ -1,2 +1,2 @@
 model,split,n,log_loss,brier_score,roc_auc,accuracy_0_5,mean_probability,actual_home_win_rate
-selected_three_feature_logistic,April descriptive audit,96,0.4685961582518976,0.15062765286948054,0.8681961313540261,0.8125,0.5460509730260417,0.59375
+uniform_40_component_logistic_ensemble,April post-lock descriptive audit,96,0.4676068796067532,0.15028665572800223,0.8654970760233918,0.8020833333333334,0.5453901891458334,0.59375

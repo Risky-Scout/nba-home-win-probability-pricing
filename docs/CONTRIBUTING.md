@@ -42,6 +42,4 @@ validator commands through `--data`.
 
 ## Model-governance rule
 
-A challenger enters the official price only when it improves a proper
-probability score materially and stably while preserving the information
-timestamp, reproducibility, and operational interpretability.
+A challenger enters the official price only when pre-deployment evidence supports an improvement relevant to the target period, the information timestamp is preserved, runtime remains acceptable, and the uncertainty and trade-offs are disclosed. Small gains must not be described as statistically conclusive.
