@@ -1,0 +1,18 @@
+{
+  "selected_parameters": {
+    "half_life": 12.0,
+    "C": 0.0075,
+    "features": [
+      "net_wins_diff",
+      "cumulative_margin_diff",
+      "recent_margin_evidence_diff"
+    ]
+  },
+  "home_advantage": {
+    "standardized_intercept_log_odds": 0.22874544796965765,
+    "standardized_intercept_probability": 0.5569383059641753,
+    "equal_strength_home_log_odds": 0.22150080154746737,
+    "equal_strength_home_win_probability": 0.5551499013988546,
+    "equal_strength_home_odds_multiplier": 1.247948248510122
+  }
+}

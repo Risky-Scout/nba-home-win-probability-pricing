@@ -1,0 +1,6 @@
+term,term_type,training_mean,training_standard_deviation,coefficient_standardized,coefficient_original_units,odds_multiplier,reference_home_win_probability,interpretation
+standardized_intercept,intercept,,,0.22874544796965765,,1.2570220207733482,0.5569383059641753,Home log odds when all standardized predictors equal zero.
+equal_strength_home_advantage,derived_home_advantage,0.0,,0.22150080154746737,0.22150080154746737,1.247948248510122,0.5551499013988546,Home log odds and probability when every raw home-away feature difference equals zero.
+net_wins_diff,feature,0.22310405643738976,19.29065154228027,0.2476008911658034,0.012835278820060813,1.2809485922613433,,"Odds multiplier is for a one-standard-deviation increase, holding the other standardized features fixed."
+cumulative_margin_diff,feature,1.72663139329806,348.17398098766745,0.27589415836258474,0.0007924031473574043,1.317708388232814,,"Odds multiplier is for a one-standard-deviation increase, holding the other standardized features fixed."
+recent_margin_evidence_diff,feature,4.840508968810863,378.68516017509614,0.23570324433688572,0.0006224253525749503,1.2657986215164723,,"Odds multiplier is for a one-standard-deviation increase, holding the other standardized features fixed."
