@@ -79,7 +79,9 @@ Weights:
 
 March was used for promotion governance, not for component or weight tuning.
 
-April outcomes were not used to choose the grid or weights.
+The grid and equal-weight rule are fixed in code and were not fitted to April
+outcomes. April has been viewed descriptively and is not presented as an
+untouched test.
 
 ## Primary metric
 

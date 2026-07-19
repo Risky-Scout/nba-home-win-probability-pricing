@@ -50,6 +50,7 @@ REQUIRED_FILES = {
     "tests/test_repository_configuration.py",
     "tests/test_documentation_contract.py",
     "tests/test_ensemble_contract.py",
+    "tests/test_public_submission_contract.py",
     ".github/workflows/tests.yml",
     ".github/dependabot.yml",
     "outputs/data_fingerprint.json",

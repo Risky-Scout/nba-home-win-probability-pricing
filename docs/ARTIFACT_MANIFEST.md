@@ -5,7 +5,9 @@
 Run:
 
 ```bash
-python nba_win_probability.py   --data /path/to/nba-win-probability-data.csv   --output-dir outputs
+python nba_win_probability.py \
+  --data /path/to/nba-win-probability-data.csv \
+  --output-dir outputs
 ```
 
 Generates:
@@ -35,7 +37,10 @@ Generates:
 Run:
 
 ```bash
-python model_governance.py   --data /path/to/nba-win-probability-data.csv   --output-dir outputs   --figure-dir figures
+python model_governance.py \
+  --data /path/to/nba-win-probability-data.csv \
+  --output-dir outputs \
+  --figure-dir figures
 ```
 
 Generates:
@@ -49,30 +54,30 @@ Generates:
 - `outputs/governance_feature_correlation.csv`
 - `outputs/governance_feature_vif.csv`
 - `outputs/governance_runtime.csv`
-
-`governance_runtime.csv` is an environment-specific timing diagnostic; its
-elapsed value may vary across machines without changing any probability.
 - `outputs/governance_selection_decision.json`
 - `figures/governance_model_comparison.png`
 - `figures/monthly_model_stability.png`
 - `figures/march_calibration_reliability.png`
 
+`governance_runtime.csv` is an environment-specific timing diagnostic. Its
+elapsed value may vary across machines without changing any probability.
+
 ## Optional challengers
 
-`challenger_analysis.py` generates tree, residual-boosting, ensemble,
+`challenger_analysis.py` generates tree, residual-boosting, probability-blend,
 calibration, and SHAP artifacts.
 
-`ablation_and_timing.py` generates feature-ablation and hardware timing
+`ablation_and_timing.py` generates feature-ablation and hardware-timing
 artifacts.
 
-## Historical research
+## Historical and shadow research
 
 `research/single_model_governance.py` and
 `research/single_model_outputs/` preserve the prior single-model research
 stage.
 
-`research/team_specific_home_effects.py` contains the non-promoted venue
-challenger.
+`research/team_specific_home_effects.py` contains the non-promoted
+team-specific venue challenger.
 
 ## Quality utilities
 

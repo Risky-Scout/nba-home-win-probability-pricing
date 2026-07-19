@@ -37,19 +37,26 @@ python -m pip check
 ## Official ensemble
 
 ```bash
-python nba_win_probability.py   --data /path/to/nba-win-probability-data.csv   --output-dir outputs
+python nba_win_probability.py \
+  --data /path/to/nba-win-probability-data.csv \
+  --output-dir outputs
 ```
 
 ## Promotion governance
 
 ```bash
-python model_governance.py   --data /path/to/nba-win-probability-data.csv   --output-dir outputs   --figure-dir figures
+python model_governance.py \
+  --data /path/to/nba-win-probability-data.csv \
+  --output-dir outputs \
+  --figure-dir figures
 ```
 
 ## Complete core workflow
 
 ```bash
-python run_submission.py   --root .   --data /path/to/nba-win-probability-data.csv
+python run_submission.py \
+  --root . \
+  --data /path/to/nba-win-probability-data.csv
 ```
 
 ## Optional machine-learning challengers
@@ -57,7 +64,9 @@ python run_submission.py   --root .   --data /path/to/nba-win-probability-data.c
 ```bash
 python -m pip install -r requirements-challengers.txt
 
-python challenger_analysis.py   --data /path/to/nba-win-probability-data.csv   --output-dir outputs
+python challenger_analysis.py \
+  --data /path/to/nba-win-probability-data.csv \
+  --output-dir outputs
 ```
 
 ## Tests
@@ -69,7 +78,9 @@ python -m pytest -q
 ## Full validator
 
 ```bash
-python validate_submission.py   --root .   --data /path/to/nba-win-probability-data.csv
+python validate_submission.py \
+  --root . \
+  --data /path/to/nba-win-probability-data.csv
 ```
 
 ## Data-free quality gate
@@ -78,16 +89,20 @@ python validate_submission.py   --root .   --data /path/to/nba-win-probability-d
 bash scripts/run_quality_checks.sh
 ```
 
+## Cross-platform reproduction contract
+
 Wall-clock measurements in `outputs/governance_runtime.csv` are
 environment-specific and may change when the governance workflow is rerun.
 
 The official April identifiers, submitted probabilities, fair odds, source
 fingerprint, and selected-model metadata reproduce exactly in the supported
-locked environment. Platform-sensitive floating-point summaries may differ
-only in insignificant final decimal places across BLAS implementations.
-PNG bytes may differ across operating systems because font and rendering
-backends are platform-specific; their schemas, dimensions, validity, and
-underlying numeric artifacts are validated instead.
+locked environment.
+
+Platform-sensitive floating-point summaries may differ only in insignificant
+final decimal places across BLAS implementations. PNG bytes may differ across
+operating systems because font and rendering backends are platform-specific;
+their schemas, dimensions, validity, and underlying numeric artifacts are
+validated instead.
 
 The quality gate checks:
 

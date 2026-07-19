@@ -10,43 +10,52 @@ information available through March.
 A fixed equal-weight ensemble of 40 L2-regularized logistic
 paired-comparison models.
 
-All components use:
+Every component uses the same three home-minus-away signals:
 
-- Net-wins differential.
-- Cumulative point-margin differential.
-- Evidence-weighted recent point-margin differential.
+1. Net wins.
+2. Cumulative point margin.
+3. Evidence-weighted recent point margin.
 
-The ensemble averages five EWMA half-lives and eight regularization values.
-The grid and equal weights are fixed; April outcomes are not used to tune
-them.
+The components span five recent-form half-lives and eight regularization
+values. All weights are fixed at 0.025.
 
-## Why the ensemble was promoted
+## Why it was selected
 
-The ensemble improves the pre-April January-February validation score and
-preserves the direction in the March governance period.
+The ensemble reduces dependence on one nearly tied grid minimum while
+preserving the same interpretable feature family and negligible runtime.
 
-| Model | Jan-Feb log loss | March log loss |
+| Model | January–February log loss | March governance log loss |
 |---|---:|---:|
-| Best single component | 0.627529 | 0.509645 |
+| Validation-best single component | 0.627529 | 0.509645 |
 | **Official ensemble** | **0.627259** | **0.508638** |
 
-The gain is modest and not claimed to be statistically conclusive. Promotion
-is justified by target relevance, pre-April directional consistency,
-negligible runtime cost, and reduced single-grid-point selection risk.
+Paired bootstrap intervals include zero. The gain is modest and not
+statistically decisive. The decision is based on
+target relevance, pre-April directional consistency, specification-risk
+reduction, and low operational cost.
 
-## April descriptive result
+## April descriptive audit
 
-- Log loss: **0.467607**
-- Brier score: **0.150287**
-- ROC AUC: **0.865497**
-- Accuracy: **80.208%**
+| Model | Log loss | Brier | ROC AUC | Accuracy |
+|---|---:|---:|---:|---:|
+| Single benchmark | 0.468596 | 0.150628 | **0.868196** | **81.250%** |
+| **Official ensemble** | **0.467607** | **0.150287** | 0.865497 | 80.208% |
 
-The single benchmark April log loss is 0.468596.
+April has been reviewed descriptively and is not represented as a pristine
+untouched test.
 
 ## Information timing
 
-Current-game box-score values are used only after the prediction timestamp.
-All official April features are frozen at March 31.
+Current-game box-score values update team state only after the current
+prediction row is stored. Every official April performance state is frozen at
+March 31.
+
+## Deliverable
+
+- [`outputs/april_predictions.csv`](outputs/april_predictions.csv)
+- 96 unique ten-character game identifiers
+- `home_win_probability`
+- Zero-margin home and away decimal odds
 
 ## Reproduce
 
@@ -60,6 +69,6 @@ python nba_win_probability.py \
 
 ## Final claim
 
-This is the strongest late-season model among the tested candidates for the
-supplied information set. It is not claimed to be a complete production NBA
-pricing system.
+This is the strongest target-specific late-season price among the tested
+candidates for the supplied information set. It is not claimed to be a
+complete production NBA pricing system or a universally optimal model.

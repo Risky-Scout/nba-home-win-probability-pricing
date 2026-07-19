@@ -50,7 +50,7 @@ The review was extended to:
 - Coefficient stability.
 - April parameter-uncertainty intervals.
 
-The champion remained selected.
+The then-current single-model champion remained selected.
 
 ## Stage 5 — Team-specific home-court research
 
@@ -63,7 +63,7 @@ A hierarchically shrunk venue challenger was implemented. It improved
 validation log loss slightly, but the bootstrap interval included zero,
 March was effectively tied, and April descriptive performance was worse.
 
-It remains a shadow challenger rather than the production champion.
+It remains a shadow challenger rather than the official model.
 
 ## Stage 6 — Runtime and CI reliability hardening
 
@@ -80,8 +80,8 @@ The public repository was converted into an installable Python project with:
 - A canonical ten-decimal probability-and-odds serialization contract.
 - A one-command macOS bootstrap and quality gate.
 
-These changes improve operational reliability without changing the selected
-model architecture or its underlying probabilities.
+These changes improved operational reliability without changing the
+then-current single-model architecture or its underlying probabilities.
 
 ## Stage 7 — Reviewer navigation and presentation clarity
 
@@ -96,8 +96,8 @@ model:
 - Documentation tests reject malformed Markdown control characters and missing
   navigation files.
 
-This stage improves reviewability and screen-share execution while preserving
-the validated probability engine.
+This stage improved reviewability and screen-share execution while preserving
+the then-current validated probability engine.
 
 ## Stage 8 — Late-season ensemble promotion
 

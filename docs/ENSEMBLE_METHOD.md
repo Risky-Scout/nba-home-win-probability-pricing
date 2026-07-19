@@ -79,6 +79,10 @@ The ensemble was promoted using pre-April evidence.
 March was used to confirm that the validation gain did not reverse before the
 April deployment period. It was not used to tune component weights.
 
+Paired date-block bootstrap intervals include zero in both periods. The
+promotion is therefore a target-specific governance decision, not a claim of
+statistically decisive superiority.
+
 ## Season maturity
 
 Monthly expanding-window results:

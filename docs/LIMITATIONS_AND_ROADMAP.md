@@ -22,7 +22,8 @@ Production response:
 The ensemble improves pre-April validation and March governance, but the gain
 is small.
 
-This is not described as statistically conclusive.
+Paired bootstrap intervals include zero. This is not described as
+statistically conclusive.
 
 Promotion is based on:
 

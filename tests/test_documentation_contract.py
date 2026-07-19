@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -17,7 +18,18 @@ KEY_NAVIGATION_FILES = {
     "docs/LIMITATIONS_AND_ROADMAP.md",
     "docs/REPRODUCIBILITY.md",
     "docs/ARTIFACT_MANIFEST.md",
+    "docs/CONTRIBUTING.md",
 }
+
+
+def markdown_files() -> list[Path]:
+    """Return every public Markdown file outside Git internals."""
+
+    return [
+        path
+        for path in sorted(ROOT.rglob("*.md"))
+        if ".git" not in path.parts
+    ]
 
 
 def test_key_navigation_files_exist() -> None:
@@ -32,14 +44,11 @@ def test_key_navigation_files_exist() -> None:
 
 
 def test_markdown_has_no_control_characters_or_tabs() -> None:
-    """Rendered documentation must not contain damaged LaTeX escapes."""
+    """Rendered documentation must not contain damaged escape characters."""
 
     failures: list[str] = []
 
-    for path in sorted(ROOT.rglob("*.md")):
-        if ".git" in path.parts:
-            continue
-
+    for path in markdown_files():
         text = path.read_text(encoding="utf-8")
         for line_number, line in enumerate(text.splitlines(), start=1):
             bad = [
@@ -59,22 +68,56 @@ def test_markdown_has_no_control_characters_or_tabs() -> None:
     assert failures == []
 
 
-def test_readme_relative_links_resolve() -> None:
-    """Local file links on the main landing page must exist."""
+def test_all_relative_markdown_links_resolve() -> None:
+    """Every local Markdown link must resolve from its source document."""
 
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    targets = re.findall(r"\[[^\]]+\]\(([^)]+)\)", readme)
     missing: list[str] = []
+    pattern = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
 
-    for target in targets:
-        if target.startswith(("http://", "https://", "#")):
-            continue
+    for path in markdown_files():
+        text = path.read_text(encoding="utf-8")
+        for target in pattern.findall(text):
+            if target.startswith(("http://", "https://", "mailto:", "#")):
+                continue
 
-        path_text = target.split("#", 1)[0]
-        if not path_text:
-            continue
+            path_text = unquote(target.split("#", 1)[0])
+            if not path_text:
+                continue
 
-        if not (ROOT / path_text).exists():
-            missing.append(target)
+            resolved = (path.parent / path_text).resolve()
+            try:
+                resolved.relative_to(ROOT.resolve())
+            except ValueError:
+                missing.append(
+                    f"{path.relative_to(ROOT)} -> {target} (outside root)"
+                )
+                continue
+
+            if not resolved.exists():
+                missing.append(
+                    f"{path.relative_to(ROOT)} -> {target} (missing)"
+                )
 
     assert missing == []
+
+
+def test_reviewer_code_search_anchors_exist() -> None:
+    """The public screen-share route must point to real code anchors."""
+
+    guide = (ROOT / "docs/REVIEWER_GUIDE.md").read_text(
+        encoding="utf-8"
+    )
+    model = (ROOT / "nba_win_probability.py").read_text(
+        encoding="utf-8"
+    )
+    anchors = {
+        "build_sequential_features",
+        "feature_values",
+        "make_model",
+        "component_predictions",
+        "ensemble_probability",
+    }
+
+    for anchor in anchors:
+        assert anchor in guide
+        assert f"def {anchor}(" in model
