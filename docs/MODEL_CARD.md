@@ -6,7 +6,7 @@ Late-Season Hyperparameter-Averaged NBA Home-Win Probability Model
 
 ## Version
 
-v1.4 — ensemble champion.
+v1.4.1 — ensemble champion, final release audit.
 
 ## Intended use
 
@@ -32,9 +32,9 @@ Suitable for:
 
 ## Target
 
-\[
+$$
 Y=1
-\]
+$$
 
 when the home team wins, otherwise zero.
 

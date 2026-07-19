@@ -33,7 +33,7 @@ def public_text() -> str:
 
 
 def test_public_version_and_official_model_are_consistent() -> None:
-    """Package metadata and public narrative must agree on v1.4."""
+    """Package metadata and public narrative must agree on v1.4.1."""
 
     with (ROOT / "pyproject.toml").open("rb") as handle:
         project = tomllib.load(handle)["project"]
@@ -45,7 +45,7 @@ def test_public_version_and_official_model_are_consistent() -> None:
     )
     narrative = public_text().lower()
 
-    assert project["version"] == "1.4.0"
+    assert project["version"] == "1.4.1"
     assert (
         selected["model"]
         == "uniform_40_component_logistic_ensemble"
@@ -53,7 +53,7 @@ def test_public_version_and_official_model_are_consistent() -> None:
     assert selected["component_count"] == 40
     assert selected["component_weight"] == 0.025
     assert "uniform 40-component" in narrative
-    assert "v1.4" in narrative
+    assert "v1.4.1" in narrative
 
 
 def test_public_narrative_contains_no_stale_official_model_claim() -> None:

@@ -1061,7 +1061,7 @@ def run(
         "selected_model": "uniform_40_component_logistic_ensemble",
         "selection_basis": (
             "Fixed equal-weight probability averaging across the complete "
-            "predeclared half-life and L2 grid."
+            "fixed candidate half-life and L2 grid."
         ),
         "validation_log_loss": float(
             candidates[

@@ -26,22 +26,22 @@ Eight logistic `C` values:
 
 Total components:
 
-\[
+$$
 5 \times 8 = 40
-\]
+$$
 
 Each component uses the same three standardized features and an
 L2-regularized logistic link.
 
 ## Aggregation
 
-For component probabilities \(p_1,\ldots,p_{40}\):
+For component probabilities $p_1,\ldots,p_{40}$:
 
-\[
+$$
 p_{ensemble} =
 \frac{1}{40}
 \sum_{k=1}^{40}p_k
-\]
+$$
 
 Weights are equal and fixed.
 
@@ -63,7 +63,7 @@ Equal weighting:
 - Preserves low latency.
 - Requires no post-hoc calibration layer.
 
-Equal weighting is not assumption-free. The predeclared grid defines the
+Equal weighting is not assumption-free. The fixed candidate grid defines the
 model-uncertainty set and therefore acts like a discrete prior over plausible
 specifications.
 

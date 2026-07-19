@@ -51,6 +51,7 @@ REQUIRED_FILES = {
     "tests/test_documentation_contract.py",
     "tests/test_ensemble_contract.py",
     "tests/test_public_submission_contract.py",
+    "tests/test_release_audit_contract.py",
     ".github/workflows/tests.yml",
     ".github/dependabot.yml",
     "outputs/data_fingerprint.json",
@@ -114,8 +115,8 @@ def validate_package(root: Path) -> None:
     )
     project = metadata["project"]
 
-    if project["version"] != "1.4.0":
-        fail("pyproject version must be 1.4.0.")
+    if project["version"] != "1.4.1":
+        fail("pyproject version must be 1.4.1.")
     if project["requires-python"] != ">=3.11,<3.14":
         fail("Supported Python range changed.")
 

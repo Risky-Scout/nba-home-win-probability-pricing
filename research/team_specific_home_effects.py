@@ -50,10 +50,10 @@ from sklearn.metrics import (
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-import nba_win_probability as champion  # noqa: E402
+import nba_win_probability as pricing  # noqa: E402
 
 
-CORE_FEATURES = list(champion.FEATURE_COLUMNS)
+CORE_FEATURES = list(pricing.FEATURE_COLUMNS)
 C_GRID = (0.005, 0.0075, 0.010, 0.015, 0.020)
 TEAM_PRIOR_GRID = (5.0, 10.0, 20.0, 40.0, 80.0)
 GLOBAL_PRIOR_GRID = (100.0, 200.0, 500.0)
@@ -84,7 +84,7 @@ def safe_logit(probability: float | np.ndarray) -> float | np.ndarray:
 
 
 def make_model(c_value: float) -> Pipeline:
-    """Construct the same scaled L2 logistic family as the champion."""
+    """Construct the same scaled L2 logistic family as the single benchmark."""
 
     return Pipeline(
         [
@@ -420,10 +420,10 @@ def evaluate_grid(
     return grid
 
 
-def champion_probabilities(
+def single_benchmark_probabilities(
     core_table: pd.DataFrame,
 ) -> dict[str, np.ndarray]:
-    """Reproduce champion validation and March probabilities."""
+    """Reproduce single-benchmark validation and March probabilities."""
 
     training = core_table["game_date"] <= TRAIN_END
     validation = core_table["game_date"].between(
@@ -524,7 +524,7 @@ def per_game_log_loss(
 def date_block_bootstrap(
     dates: pd.Series,
     outcome: pd.Series,
-    champion_probability: np.ndarray,
+    benchmark_probability: np.ndarray,
     challenger_probability: np.ndarray,
     replicates: int = BOOTSTRAP_REPLICATES,
 ) -> dict[str, float]:
@@ -538,7 +538,7 @@ def date_block_bootstrap(
         )
         - per_game_log_loss(
             outcome.to_numpy(),
-            champion_probability,
+            benchmark_probability,
         )
     )
     unique_dates = np.array(sorted(np.unique(date_array)))
@@ -571,7 +571,7 @@ def date_block_bootstrap(
     )
 
     return {
-        "observed_challenger_minus_champion_log_loss": float(
+        "observed_challenger_minus_benchmark_log_loss": float(
             difference.mean()
         ),
         "bootstrap_2_5_percent": float(lower),
@@ -591,7 +591,7 @@ def april_descriptive_audit(
 ) -> dict[str, float]:
     """Score strict March 31 challenger prices descriptively."""
 
-    frozen_core = champion.build_frozen_features(
+    frozen_core = pricing.build_frozen_features(
         data,
         half_life=12.0,
         cutoff=MARCH_END,
@@ -645,7 +645,7 @@ def save_figure(
     summary: pd.DataFrame,
     figure_path: Path,
 ) -> None:
-    """Create a concise champion-versus-challenger chart."""
+    """Create a concise benchmark-versus-challenger chart."""
 
     figure_path.parent.mkdir(parents=True, exist_ok=True)
     figure = plt.figure(figsize=(8, 5))
@@ -665,8 +665,11 @@ def save_figure(
         label="March governance",
     )
     axis.set_xticks(positions)
-    axis.set_xticklabels(summary["model"])
+    axis.set_xticklabels(
+        ["Single benchmark", "Venue challenger"],
+    )
     axis.set_ylabel("Log loss — lower is better")
+    axis.set_title("Team-specific venue effect remains a shadow challenger")
     axis.legend()
     figure.tight_layout()
     figure.savefig(figure_path, dpi=180)
@@ -683,8 +686,8 @@ def run(
     output_dir.mkdir(parents=True, exist_ok=True)
     figure_dir.mkdir(parents=True, exist_ok=True)
 
-    data = champion.load_and_validate(data_path)
-    core_table = champion.build_sequential_features(
+    data = pricing.load_and_validate(data_path)
+    core_table = pricing.build_sequential_features(
         data,
         half_life=12.0,
     )
@@ -698,7 +701,7 @@ def run(
             best,
         )
     )
-    champion_probability = champion_probabilities(core_table)
+    benchmark_probability = single_benchmark_probabilities(core_table)
 
     validation = core_table["game_date"].between(
         VALIDATION_START,
@@ -709,17 +712,17 @@ def run(
         MARCH_END,
     )
 
-    champion_validation = probability_metrics(
+    benchmark_validation = probability_metrics(
         core_table.loc[validation, "home_win"],
-        champion_probability["validation"],
+        benchmark_probability["validation"],
     )
     challenger_validation = probability_metrics(
         challenger_table.loc[validation, "home_win"],
         challenger_probability["validation"],
     )
-    champion_march = probability_metrics(
+    benchmark_march = probability_metrics(
         core_table.loc[march, "home_win"],
-        champion_probability["march"],
+        benchmark_probability["march"],
     )
     challenger_march = probability_metrics(
         challenger_table.loc[march, "home_win"],
@@ -729,14 +732,14 @@ def run(
     summary = pd.DataFrame(
         [
             {
-                "model": "three_signal_champion",
+                "model": "validation_best_single_component",
                 **{
                     f"validation_{key}": value
-                    for key, value in champion_validation.items()
+                    for key, value in benchmark_validation.items()
                 },
                 **{
                     f"march_{key}": value
-                    for key, value in champion_march.items()
+                    for key, value in benchmark_march.items()
                 },
             },
             {
@@ -764,7 +767,7 @@ def run(
                 **date_block_bootstrap(
                     core_table.loc[validation, "game_date"],
                     core_table.loc[validation, "home_win"],
-                    champion_probability["validation"],
+                    benchmark_probability["validation"],
                     challenger_probability["validation"],
                 ),
             },
@@ -773,7 +776,7 @@ def run(
                 **date_block_bootstrap(
                     core_table.loc[march, "game_date"],
                     core_table.loc[march, "home_win"],
-                    champion_probability["march"],
+                    benchmark_probability["march"],
                     challenger_probability["march"],
                 ),
             },
@@ -795,7 +798,7 @@ def run(
     )
 
     decision = {
-        "promote_to_champion": False,
+        "promote_to_official_model": False,
         "selected_challenger": {
             "feature_family": str(best["feature_family"]),
             "team_prior": float(best["team_prior"]),
@@ -809,7 +812,7 @@ def run(
             "in March, but the paired bootstrap intervals include zero, "
             "March Brier and accuracy do not improve, and the strict April "
             "descriptive score is worse. The evidence is insufficient to "
-            "replace the simpler champion."
+            "replace the official ensemble or justify adding the venue feature."
         ),
         "april_outcomes_used_for_selection": False,
         "march_is_governance_not_pristine_test": True,

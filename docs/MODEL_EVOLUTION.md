@@ -103,7 +103,7 @@ the then-current validated probability engine.
 
 The final assignment target is April, when team-strength states are mature.
 
-A fixed ensemble was built across the complete predeclared half-life and L2
+A fixed ensemble was built across the complete fixed candidate half-life and L2
 grid. It uses the same three sports signals as the single champion.
 
 The ensemble:
@@ -119,6 +119,26 @@ The best single component remains the benchmark and interpretation anchor.
 The promotion is not described as statistically decisive. It is a
 target-specific model-governance decision based on pre-April evidence,
 late-season relevance, and specification-risk reduction.
+
+## Stage 9 — Final release and GitHub-rendering audit
+
+The final repository was audited as rendered on GitHub, not only as raw files.
+
+The release audit:
+
+- Replaced unsupported LaTeX delimiters with GitHub-supported math syntax.
+- Added tests that reject broken math delimiters.
+- Added a research index and clarified historical single-model terminology.
+- Updated the team-specific venue artifacts to benchmark terminology.
+- Replaced preregistration-sounding “predeclared” wording with “fixed
+  candidate grid.”
+- Locked routine Dependabot version-update pull requests for the frozen
+  interview submission while retaining security monitoring.
+- Added final release tests for GitHub rendering, dependency-lock policy, and
+  research labeling.
+
+No official April probability, fair odd, or model coefficient changed in this
+stage.
 
 ## Final decision rule
 

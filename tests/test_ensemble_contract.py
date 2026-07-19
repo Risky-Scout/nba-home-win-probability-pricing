@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_official_component_grid_is_fixed() -> None:
-    """The published ensemble must contain exactly 40 predeclared components."""
+    """The published ensemble must contain exactly 40 fixed-grid components."""
 
     assert model.HALF_LIFE_GRID == (5.0, 8.0, 12.0, 16.0, 24.0)
     assert model.C_GRID == (

@@ -286,7 +286,7 @@ def component_predictions(
     frozen_tables: dict[float, pd.DataFrame] | None = None,
     return_models: bool = False,
 ) -> tuple[np.ndarray, pd.DataFrame, list[Pipeline]]:
-    """Fit every predeclared component and return its probability matrix."""
+    """Fit every fixed-grid component and return its probability matrix."""
 
     prediction_columns: list[np.ndarray] = []
     component_rows: list[dict[str, float]] = []

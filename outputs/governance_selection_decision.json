@@ -1,6 +1,6 @@
 {
   "selected_model": "uniform_40_component_logistic_ensemble",
-  "selection_basis": "Fixed equal-weight probability averaging across the complete predeclared half-life and L2 grid.",
+  "selection_basis": "Fixed equal-weight probability averaging across the complete fixed candidate half-life and L2 grid.",
   "validation_log_loss": 0.6272594857985543,
   "march_governance_check_log_loss": 0.508637655251053,
   "validation_best_single_component": {

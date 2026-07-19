@@ -1,18 +1,21 @@
-"""Enhanced model-governance analysis for the NBA pricing submission.
+"""Historical governance for the prior single-model benchmark.
 
-The production champion remains the leakage-safe three-signal L2 logistic model.
-This script tests the limitations raised during review:
+This module preserves the limitations-driven research stage completed before
+the fixed 40-component ensemble became the official April model. References to
+the “champion” inside this historical module mean the then-current
+three-signal L2-logistic benchmark, not the current official model.
+
+The analysis covers:
 
 - feature collinearity,
-- unusual evidence-weighted EWMA form,
-- lack of opponent adjustment,
+- the evidence-weighted EWMA form,
+- opponent adjustment,
 - calibration uncertainty,
-- feature-subset instability,
+- feature-subset stability,
 - coefficient stability,
 - model uncertainty in April prices.
 
-No April outcome is used to select a model. April outcomes are scored only in
-the separate descriptive artifact already produced by the champion workflow.
+No April outcome is used to select the historical single-model specification.
 """
 
 from __future__ import annotations

@@ -185,7 +185,7 @@ def validate_json_and_tables() -> None:
         ).read_text(encoding="utf-8")
     )
     require(
-        venue["promote_to_champion"] is False,
+        venue["promote_to_official_model"] is False,
         "Team-specific venue challenger was unexpectedly promoted.",
     )
 

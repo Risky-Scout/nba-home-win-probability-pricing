@@ -1,6 +1,6 @@
-# NBA Home-Win Probability Pricing — v1.4 Ensemble Champion
+# NBA Home-Win Probability Pricing — v1.4.1 Ensemble Champion
 
-[![CI](https://github.com/Risky-Scout/nba-home-win-probability-pricing/actions/workflows/tests.yml/badge.svg)](https://github.com/Risky-Scout/nba-home-win-probability-pricing/actions/workflows/tests.yml)
+[![CI](https://github.com/Risky-Scout/nba-home-win-probability-pricing/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/Risky-Scout/nba-home-win-probability-pricing/actions/workflows/tests.yml)
 
 A leakage-safe, chronologically validated probability-pricing submission for
 the bet365 NBA technical task.
@@ -19,6 +19,7 @@ the bet365 NBA technical task.
 
 | Item | Final decision |
 |---|---|
+| Release | `v1.4.1-final-audit` |
 | Deployment target | April home-win probabilities |
 | Information cutoff | Strict March 31 snapshot |
 | Official model | Uniform mean of 40 L2-logistic paired-comparison models |
@@ -61,16 +62,16 @@ The components differ only in:
 - EWMA half-life: 5, 8, 12, 16, or 24 games.
 - Logistic `C`: 0.003, 0.005, 0.0075, 0.01, 0.015, 0.02, 0.03, or 0.05.
 
-For component probability \(p_k\):
+For component probability $p_k$:
 
-\[
+$$
 p_{\mathrm{official}}
 =
 \frac{1}{40}
 \sum_{k=1}^{40} p_k
-\]
+$$
 
-Each weight is fixed at \(1/40 = 0.025\). No stacking or calibration weights
+Each weight is fixed at $1/40 = 0.025$. No stacking or calibration weights
 are estimated.
 
 ## Why an ensemble earned promotion
@@ -176,6 +177,7 @@ approximately **55.568%**.
 | Reliability hardening | Can the project install, test, and validate consistently? | Python 3.11–3.13, CI, artifact checks |
 | Reviewer navigation | Can a reviewer understand the decision quickly? | Guided 2-, 10-, and 20-minute routes |
 | Ensemble promotion | Can specification risk be reduced for the late-season target? | Fixed 40-component official price |
+| Final release audit | Does GitHub render cleanly and stay internally consistent? | Math, metadata, research labels, and dependency lock verified |
 
 Full history: [docs/MODEL_EVOLUTION.md](docs/MODEL_EVOLUTION.md).
 
@@ -187,7 +189,7 @@ Full history: [docs/MODEL_EVOLUTION.md](docs/MODEL_EVOLUTION.md).
 | Single benchmark | `outputs/single_model_benchmark_april_predictions.csv` |
 | Promotion governance | `model_governance.py`, `outputs/governance_*` |
 | Optional ML challengers | `challenger_analysis.py` |
-| Historical/shadow research | `research/` |
+| Historical/shadow research | [`research/README.md`](research/README.md) |
 
 No research artifact silently replaces the official April price.
 
